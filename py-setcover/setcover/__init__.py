@@ -40,7 +40,8 @@ def setcover(
         algo: The algorithm to use.
               greedy-bitvec for BitVec-based implementation (faster for most cases)
               greedy-standard for HashSet-based implementation.
-              Defaults to greedy-bitvec.
+              greedy-textbook for a straightforward greedy loop with no optimizations.
+              Defaults to greedy-standard.
 
     Returns:
         A sorted list containing the keys of the chosen sets that form the cover.
@@ -50,10 +51,8 @@ def setcover(
         TypeError: If the input is not a dictionary, or if keys/values are not of supported types.
         ValueError: If no non-empty lists are provided, or if an invalid algorithm is specified.
     """
-    if algo not in ("greedy-bitvec", "greedy-standard"):
-        msg = (
-            f"""<algo> must be in ("greedy-bitvec", "greedy-standard") but is {algo}"""
-        )
+    if algo not in ("greedy-bitvec", "greedy-standard", "greedy-textbook"):
+        msg = f"""<algo> must be in ("greedy-bitvec", "greedy-standard", "greedy-textbook") but is {algo}"""
         raise ValueError(msg)
     # Validate input
     if not isinstance(sets, dict):

@@ -13,7 +13,8 @@ use std::hash::Hash;
 ///
 /// * `sets`: A `HashMap` where keys are the identifiers of the sets and values are vectors
 ///   of the elements in each set.
-/// * `algo`: A string specifying which implementation to use ("greedy-bitvec" or "greedy-standard").
+/// * `algo`: A string specifying which implementation to use ("greedy-bitvec",
+///   "greedy-standard", or "greedy-textbook").
 ///
 /// # Type Parameters
 ///
@@ -66,11 +67,27 @@ where
         int_sets_vec[int_key] = int_elements;
     }
 
+    // Sort by descending size so the greedy-standard variant can short-circuit sooner.
+    let mut indices: Vec<usize> = (0..int_sets_vec.len()).collect();
+    indices.sort_by(|&a, &b| int_sets_vec[b].len().cmp(&int_sets_vec[a].len()));
+
+    let mut sorted_sets = Vec::with_capacity(int_sets_vec.len());
+    let mut sorted_keys = Vec::with_capacity(int_to_key.len());
+    for idx in indices {
+        sorted_sets.push(int_sets_vec[idx].clone());
+        sorted_keys.push(int_to_key[idx].clone());
+    }
+    int_sets_vec = sorted_sets;
+    int_to_key = sorted_keys;
+
     // 4. Call the selected algorithm. It returns a HashSet of integer keys.
     let cover_int_set: AHashSet<usize> = match algo.as_str() {
         "greedy-bitvec" => greedy_set_cover_bitvec(&int_sets_vec, next_element_id),
         "greedy-standard" => greedy_set_cover_std(&int_sets_vec),
-        _ => panic!("Wrong algo choice, must be 'greedy-bitvec' or 'greedy-standard'"),
+        "greedy-textbook" => greedy_set_cover_textbook(&int_sets_vec),
+        _ => panic!(
+            "Wrong algo choice, must be 'greedy-bitvec', 'greedy-standard' or 'greedy-textbook'"
+        ),
     };
 
     // 5. Convert the resulting HashSet of integer keys back to the original type K.
@@ -169,8 +186,11 @@ fn greedy_set_cover_std(sets: &Vec<Vec<usize>>) -> AHashSet<usize> {
         let mut max_covered = 0;
 
         for (key, set_elements) in sets.iter().enumerate() {
-            if cover.contains(&key) || set_elements.len() < max_covered {
+            if cover.contains(&key) {
                 continue;
+            }
+            if set_elements.len() < max_covered {
+                break;
             }
 
             let intersection_count = set_elements
@@ -196,6 +216,49 @@ fn greedy_set_cover_std(sets: &Vec<Vec<usize>>) -> AHashSet<usize> {
             );
         }
         iterations += 1;
+    }
+
+    cover
+}
+
+/// Straightforward textbook greedy algorithm operating on HashSets.
+/// Always picks the set that covers the largest number of uncovered
+/// elements without any early exits or optimizations.
+fn greedy_set_cover_textbook(sets: &Vec<Vec<usize>>) -> AHashSet<usize> {
+    let mut uncovered_elements: AHashSet<usize> = sets.iter().flatten().cloned().collect();
+    let mut cover = AHashSet::new();
+
+    while !uncovered_elements.is_empty() {
+        let mut best_set_key: Option<usize> = None;
+        let mut best_cover_count = 0;
+
+        for (key, set_elements) in sets.iter().enumerate() {
+            if cover.contains(&key) {
+                continue;
+            }
+
+            let cover_count = set_elements
+                .iter()
+                .filter(|e| uncovered_elements.contains(e))
+                .count();
+
+            if cover_count > best_cover_count {
+                best_cover_count = cover_count;
+                best_set_key = Some(key);
+            }
+        }
+
+        if let Some(key) = best_set_key {
+            cover.insert(key);
+            for element in &sets[key] {
+                uncovered_elements.remove(element);
+            }
+        } else {
+            panic!(
+                "Error: Unable to find a set to cover the remaining elements: {:?}",
+                uncovered_elements
+            );
+        }
     }
 
     cover
@@ -232,11 +295,26 @@ where
         .max()
         .map_or(0, |&x| x + 1);
 
+    // Sort by descending size to match the generic wrapper behavior.
+    let mut indices: Vec<usize> = (0..int_sets_vec.len()).collect();
+    indices.sort_by(|&a, &b| int_sets_vec[b].len().cmp(&int_sets_vec[a].len()));
+    let mut sorted_sets = Vec::with_capacity(int_sets_vec.len());
+    let mut sorted_keys = Vec::with_capacity(int_to_key.len());
+    for idx in indices {
+        sorted_sets.push(int_sets_vec[idx].clone());
+        sorted_keys.push(int_to_key[idx].clone());
+    }
+    int_sets_vec = sorted_sets;
+    int_to_key = sorted_keys;
+
     // 4. Call the selected algorithm
     let cover_int_set: AHashSet<usize> = match algo.as_str() {
         "greedy-bitvec" => greedy_set_cover_bitvec(&int_sets_vec, universe_size),
         "greedy-standard" => greedy_set_cover_std(&int_sets_vec),
-        _ => panic!("Wrong algo choice, must be 'greedy-bitvec' or 'greedy-standard'"),
+        "greedy-textbook" => greedy_set_cover_textbook(&int_sets_vec),
+        _ => panic!(
+            "Wrong algo choice, must be 'greedy-bitvec', 'greedy-standard' or 'greedy-textbook'"
+        ),
     };
 
     // 5. Convert back to original type K
@@ -270,6 +348,7 @@ mod tests {
 
         let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
         let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
+        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
         let universe = make_universe(&sets);
 
         fn check_coverage(
@@ -287,9 +366,11 @@ mod tests {
 
         assert_eq!(set_cover_0, vec!["A".to_string()]);
         assert_eq!(set_cover_1, vec!["A".to_string()]);
+        assert_eq!(set_cover_2, vec!["A".to_string()]);
 
         check_coverage(&set_cover_0, &sets, &universe);
         check_coverage(&set_cover_1, &sets, &universe);
+        check_coverage(&set_cover_2, &sets, &universe);
     }
 
     #[test]
@@ -301,6 +382,7 @@ mod tests {
 
         let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
         let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
+        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
         let universe = make_universe(&sets);
 
         fn check_coverage(cover: &[i32], sets: &HashMap<i32, Vec<i32>>, universe: &AHashSet<i32>) {
@@ -314,9 +396,11 @@ mod tests {
 
         assert_eq!(set_cover_0, vec![1, 3]);
         assert_eq!(set_cover_1, vec![1, 3]);
+        assert_eq!(set_cover_2, vec![1, 3]);
 
         check_coverage(&set_cover_0, &sets, &universe);
         check_coverage(&set_cover_1, &sets, &universe);
+        check_coverage(&set_cover_2, &sets, &universe);
     }
 
     #[test]
@@ -328,9 +412,11 @@ mod tests {
 
         let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
         let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
+        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
 
         assert_eq!(sets.len(), set_cover_0.len());
         assert_eq!(sets.len(), set_cover_1.len());
+        assert_eq!(sets.len(), set_cover_2.len());
 
         let universe = make_universe(&sets);
 
@@ -345,6 +431,7 @@ mod tests {
 
         check_coverage(&set_cover_0, &sets, &universe);
         check_coverage(&set_cover_1, &sets, &universe);
+        check_coverage(&set_cover_2, &sets, &universe);
     }
 
     #[test]
@@ -356,11 +443,14 @@ mod tests {
 
         let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
         let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
+        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
 
         assert_eq!(set_cover_0.len(), 1);
         assert_eq!(set_cover_1.len(), 1);
+        assert_eq!(set_cover_2.len(), 1);
         assert_eq!(set_cover_0, vec![1]);
         assert_eq!(set_cover_1, vec![1]);
+        assert_eq!(set_cover_2, vec![1]);
 
         let universe = make_universe(&sets);
 
@@ -375,6 +465,7 @@ mod tests {
 
         check_coverage(&set_cover_0, &sets, &universe);
         check_coverage(&set_cover_1, &sets, &universe);
+        check_coverage(&set_cover_2, &sets, &universe);
     }
 
     #[test]
@@ -386,9 +477,11 @@ mod tests {
 
         let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
         let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
+        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
 
         assert_eq!(set_cover_0.len(), 3);
         assert_eq!(set_cover_1.len(), 3);
+        assert_eq!(set_cover_2.len(), 3);
 
         let universe = make_universe(&sets);
 
@@ -403,6 +496,7 @@ mod tests {
 
         check_coverage(&set_cover_0, &sets, &universe);
         check_coverage(&set_cover_1, &sets, &universe);
+        check_coverage(&set_cover_2, &sets, &universe);
     }
 
     #[test]
@@ -416,9 +510,11 @@ mod tests {
 
         let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
         let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
+        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
 
         assert_eq!(set_cover_0, vec![1, 5]);
         assert_eq!(set_cover_1, vec![1, 5]);
+        assert_eq!(set_cover_2, vec![1, 5]);
 
         let universe = make_universe(&sets);
         fn check_coverage(cover: &[i32], sets: &HashMap<i32, Vec<i32>>, universe: &AHashSet<i32>) {
@@ -432,6 +528,7 @@ mod tests {
 
         check_coverage(&set_cover_0, &sets, &universe);
         check_coverage(&set_cover_1, &sets, &universe);
+        check_coverage(&set_cover_2, &sets, &universe);
     }
 
     #[test]
@@ -444,10 +541,12 @@ mod tests {
 
         let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
         let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
+        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
 
         let expected = vec![1, 2, 3, 4];
         assert_eq!(set_cover_0, expected);
         assert_eq!(set_cover_1, expected);
+        assert_eq!(set_cover_2, expected);
 
         assert!(
             set_cover_0.windows(2).all(|w| w[0] <= w[1]),
@@ -456,6 +555,10 @@ mod tests {
         assert!(
             set_cover_1.windows(2).all(|w| w[0] <= w[1]),
             "Output from greedy-bitvec is not sorted"
+        );
+        assert!(
+            set_cover_2.windows(2).all(|w| w[0] <= w[1]),
+            "Output from greedy-textbook is not sorted"
         );
     }
 
@@ -467,8 +570,10 @@ mod tests {
 
         let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
         let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
+        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
 
         assert_eq!(set_cover_0.len(), 2);
         assert_eq!(set_cover_1.len(), 2);
+        assert_eq!(set_cover_2.len(), 2);
     }
 }

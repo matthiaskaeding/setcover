@@ -28,12 +28,14 @@ def test_algorithms_agree_on_simple_case():
     # Act
     result_0 = setcover(sets, algo="greedy-bitvec")
     result_1 = setcover(sets, algo="greedy-standard")
+    result_2 = setcover(sets, algo="greedy-textbook")
 
     # Assert
     # The result should be ['S1', 'S2', 'S3'] in this case for the greedy algorithm
     expected_result = {"S1", "S2", "S3"}
     assert set(result_0) == expected_result
     assert set(result_1) == expected_result
+    assert set(result_2) == expected_result
 
 
 def test_default_algorithm_runs():
@@ -71,7 +73,9 @@ def test_invalid_algo_string_raises_error():
         setcover(sets, algo="invalid-algorithm-name")
 
     # Optionally, check that the error message is helpful
-    assert 'must be in ("greedy-bitvec", "greedy-standard")' in str(excinfo.value)
+    assert 'must be in ("greedy-bitvec", "greedy-standard", "greedy-textbook")' in str(
+        excinfo.value
+    )
 
 
 def test_different_key_types():
