@@ -1,6 +1,8 @@
 import narwhals as nw
 from narwhals.typing import IntoFrame
 
+from setcover._setcover_lib import greedy_set_cover_dense_py
+
 
 def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame:
     """
@@ -26,8 +28,45 @@ def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame
             _dense_rank_expr(sets).alias("set_int"),
             _dense_rank_expr(elements).alias("element_int"),
         )
-        .sort("set_int")
     )
 
 
-__all__ = ["map_to_ints"]
+def set_cover(df_native: IntoFrame, set_col: str, el_col: str) -> nw.Series:
+    """
+    Find set cover
+    """
+    df = map_to_ints(df_native, set_col, el_col).sort("set_int", "element_int")
+    dfl = (
+        df.group_by("set", "set_int")
+        .agg(nw.col("element_int").len().alias("n"))
+        .sort("set_int")
+    )
+
+    # Built sets as list of lists. We know element_int are dense integers without nulls
+    sets = []
+    start = 0
+    elements_int = df.get_column("element_int").to_list()
+    for n in dfl.get_column("n"):
+        sets.append(elements_int[start : start + n])
+        start += n
+
+    universe_size = df.get_column("element_int").max() + 1
+    chosen_sets = greedy_set_cover_dense_py(universe_size, sets)
+
+    # Map back
+    lu = nw.DataFrame.from_dict(
+        {"set_int": chosen_sets},
+        backend=df.implementation,
+    )
+    solution = (
+        dfl.select("set", "set_int")
+        .join(lu, ["set_int"], "inner")
+        .get_column("set")
+        .sort()
+        .to_native()
+    )
+
+    return solution
+
+
+__all__ = ["set_cover"]
