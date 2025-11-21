@@ -1,16 +1,24 @@
 # Run benchmarks
 
-`scripts/benchmark/time_py.py` now generates its own datasets and benchmarks the
-Rust-backed Python bindings. The defaults match the previous `make_data.r`
-settings, but you can adjust them, e.g.:
+1. Generate a shared dataset:
 
 ```bash
-uv run --with numpy --with polars scripts/benchmark/time_py.py \
-  --n-sets 100000 --n-elements 2000 --n-rows 10000000 --seed 333
+uv run scripts/benchmark/make_data.py \
+  --n-sets 100000 --n-elements 2000 --n-rows 10000000 --seed 333 \
+  --output scripts/benchmark/data.csv
 ```
 
-Pass `--export-csv scripts/benchmark/data.csv --skip-bench` to produce the
-long-form dataset without running the Python timings; this is what `just
-prep-bench` now does so that `just rtime` (which still uses the R benchmark) has
-fresh input. As before, use `just pytime` to install the wheel in release mode
-before running the benchmark.
+2. Time the Python/Rust bindings:
+
+```bash
+uv run scripts/benchmark/time_py.py --data-csv scripts/benchmark/data.csv
+```
+
+3. Time the Rcpp implementation:
+
+```bash
+Rscript scripts/benchmark/time_r.r scripts/benchmark/data.csv
+```
+
+The `just bench` recipe automates this (`prep-bench`, `pytime`, and `rtime`) so
+you can compare outputs side by side after a single command.

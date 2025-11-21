@@ -1,17 +1,19 @@
 library(data.table)
 library(RcppGreedySetCover)
 
-# Time data loading
+args <- commandArgs(trailingOnly = TRUE)
+data_path <- if (length(args) >= 1) args[1] else "scripts/benchmark/data.csv"
+
+cat(sprintf("Reading data from %s\n", data_path))
+
 start_load <- Sys.time()
-df <- fread("scripts/benchmark/data.csv")
+df <- fread(data_path)
 load_time <- Sys.time() - start_load
 
-# Time algorithm execution
 start_algo <- Sys.time()
 res <- greedySetCover(df)
 algo_time <- Sys.time() - start_algo
 
-# Print results in Python-like format
 des_len <- 100
 header <- "-Results R"
 cat(header, strrep("-", des_len - nchar(header)), "\n", sep = "")

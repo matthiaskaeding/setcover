@@ -55,18 +55,26 @@ prep-bench n_sets="100000" n_elements="2000" n_rows="10000000" seed="333":
 	@echo "  Number of elements: {{n_elements}}"
 	@echo "  Number of rows: {{n_rows}}"
 	@echo "  Seed: {{seed}}"
-	uv run --with polars --with numpy scripts/benchmark/time_py.py --n-sets {{n_sets}} --n-elements {{n_elements}} --n-rows {{n_rows}} --seed {{seed}} --export-csv scripts/benchmark/data.csv --skip-bench
+	uv run scripts/benchmark/make_data.py --n-sets {{n_sets}} --n-elements {{n_elements}} --n-rows {{n_rows}} --seed {{seed}} --output scripts/benchmark/data.csv
+
+# Run benchmarks end-to-end
+bench n_sets="100000" n_elements="2000" n_rows="10000000" seed="333":
+	@echo "Creating simulation data with:"
+	@echo "  Number of sets: {{n_sets}}"
+	@echo "  Number of elements: {{n_elements}}"
+	@echo "  Number of rows: {{n_rows}}"
+	@echo "  Seed: {{seed}}"
+	uv run scripts/benchmark/make_data.py --n-sets {{n_sets}} --n-elements {{n_elements}} --n-rows {{n_rows}} --seed {{seed}} --output scripts/benchmark/data.csv
+	just pytime
+	just rtime
+	@echo "Deleting simulation data"
+	rm scripts/benchmark/data.csv
 
 # Take timing for python. Install in release mode first 
 pytime: pyinstall-rel
-	uv run --with polars --with numpy scripts/benchmark/time_py.py
+	uv run scripts/benchmark/time_py.py --data-csv scripts/benchmark/data.csv
 # Take timing for python
 rtime:
-	Rscript scripts/benchmark/time_r.r	
+	Rscript scripts/benchmark/time_r.r scripts/benchmark/data.csv
 # Both times
 time: pytime rtime
-
-# Run benchmarks
-bench: prep-bench pytime rtime 
-	@echo "Deleting simulation data"
-	rm scripts/benchmark/data.csv

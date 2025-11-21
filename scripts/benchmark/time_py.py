@@ -1,7 +1,6 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "numpy",
 #     "polars",
 # ]
 # ///
@@ -10,7 +9,6 @@ from pathlib import Path
 import sys
 import time
 
-import numpy as np
 import polars as pl
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -21,21 +19,17 @@ if str(PY_PACKAGE_DIR) not in sys.path:
 from setcover import setcover
 
 
-def build_random_sets(
-    n_sets: int, n_elements: int, n_rows: int, seed: int
-) -> tuple[dict[int, list[int]], pl.DataFrame]:
-    """Generate a random set dictionary and the raw long-form DataFrame."""
-    rng = np.random.default_rng(seed)
-    set_ids = rng.integers(low=0, high=n_sets, size=n_rows, dtype=np.int64)
-    element_ids = rng.integers(low=0, high=n_elements, size=n_rows, dtype=np.int64)
-    df = pl.DataFrame({"set": set_ids, "element": element_ids})
-    aggregated = (
-        df.group_by("set").agg(pl.col("element").unique().sort()).sort("set")
+def load_sets_from_csv(path: Path) -> dict[int, list[int]]:
+    df = pl.read_csv(path)
+    grouped = (
+        df.group_by("set")
+        .agg(pl.col("element").unique().sort())
+        .sort("set")
     )
     sets = {}
-    for row in aggregated.iter_rows(named=True):
+    for row in grouped.iter_rows(named=True):
         sets[int(row["set"])] = list(row["element"])
-    return sets, df
+    return sets
 
 
 def verify_cover(sets, cover):
@@ -63,40 +57,19 @@ def time_algo(name: str, sets: dict[int, list[int]]):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark python bindings across algorithms.")
-    parser.add_argument("--n-sets", type=int, default=100_000, help="Total number of candidate sets")
-    parser.add_argument("--n-elements", type=int, default=2_000, help="Size of the universe")
-    parser.add_argument("--n-rows", type=int, default=10_000_000, help="Number of (set, element) samples")
-    parser.add_argument("--seed", type=int, default=333, help="Random seed for reproducible datasets")
     parser.add_argument(
-        "--export-csv",
-        type=str,
-        default=None,
-        help="Optional path to store the sampled long-form dataset (for the R benchmark).",
-    )
-    parser.add_argument(
-        "--skip-bench",
-        action="store_true",
-        help="Generate the dataset (and optional CSV) but skip running the Python benchmarks.",
+        "--data-csv",
+        type=Path,
+        default=Path("scripts/benchmark/data.csv"),
+        help="CSV file containing the long-form dataset.",
     )
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    print(
-        f"Generating data with n_sets={args.n_sets:,}, "
-        f"n_elements={args.n_elements:,}, n_rows={args.n_rows:,}, seed={args.seed}"
-    )
-    sets, df = build_random_sets(args.n_sets, args.n_elements, args.n_rows, args.seed)
-
-    if args.export_csv:
-        out_path = Path(args.export_csv)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        df.write_csv(out_path)
-        print(f"Wrote dataset to {out_path}")
-
-    if args.skip_bench:
-        return
+    print(f"Reading data from {args.data_csv}")
+    sets = load_sets_from_csv(args.data_csv)
 
     des_len = 100
     print("-Results python" + "-" * (des_len - len("-Results python")))
