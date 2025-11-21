@@ -27,28 +27,15 @@ from setcover import setcover
 
 df = pd.DataFrame(
     {
-        "set_name": ["A", "A", "B", "C"],
+        "set": ["A", "A", "B", "C"],
         "element": [1, 2, 2, 3],
     }
 )
 
-solution = setcover(df, set_col="set_name", el_col="element")
-print(solution.tolist())  # -> ["A", "C"]
+solution = setcover(df, "set", "element")
+print(solution)  # -> ["A", "C"]
 ```
 
 The return type mirrors the backend you passed in (pandas `Series` in the
 example above, Polars `Series` if you provide a `pl.DataFrame`). Missing values
 are automatically dropped before solving.
-
-### Working with integer IDs
-
-If you need access to the contiguous integer representation that the Rust core
-expects, call `map_to_ints(df, set_col, el_col)`. It returns a Narwhals
-DataFrame with three columns:
-
-- `set`: original set identifiers
-- `set_int`: dense integer IDs for each set
-- `element_int`: dense integer IDs for each element
-
-This helper is useful when you want to persist the mappings or call the lower
-level `_setcover_lib.greedy_set_cover_*` functions directly.

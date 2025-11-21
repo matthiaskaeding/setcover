@@ -6,6 +6,10 @@ Rust sources live under `crates/setcover-core/src`, providing the shared greedy 
 ## Build, Test, and Development Commands
 Use the `just` targets to keep workflows reproducible: `just ctest` runs `cargo test` across all Rust crates, `just pyinstall` performs a development `maturin develop` build so the Python package can be imported locally, and `just pytest` executes the Python suite via `uv run pytest py-setcover/tests`. `just test` chains both test stacks for CI parity, while `just prep-bench`/`pytime`/`rtime` orchestrate reproducible benchmark data and timings. When debugging or validating installs, `just pydebug` confirms the package resolves on the active `uv` virtualenv.
 
+# Writing style
+
+When updating any README.md are any other documentation write concisely.
+
 ## Coding Style & Naming Conventions
 Rust code should remain `cargo fmt` clean with 4-space indentation, idiomatic `snake_case` symbols, and early returns for impossible states. Python follows `ruff format` defaults, also 4 spaces, with modules and functions in `snake_case` and classes in `CamelCase`. Run `just pylint` (which wraps `ruff format` and `ruff check --fix`) before submitting; do not hand-edit generated bindings in `py-setcover/setcover`.
 
