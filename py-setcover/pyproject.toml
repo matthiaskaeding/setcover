@@ -10,7 +10,7 @@ module-name = "setcover._setcover_lib"
 name = "setcover"
 version = "0.1.0"
 description = "A high-performance set cover algorithm implementation in Rust."
-readme = "README.md" 
+readme = "README.md"
 authors = [
     { name = "Matthias Kaeding", email = "kaedingmatthias@gmail.com" }
 ]
@@ -28,16 +28,17 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
 ]
+dependencies = [
+    "narwhals>=2.12.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/matthias-kaeding/setcover"
 Repository = "https://github.com/matthias-kaeding/setcover"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "pytest>=8.4",
-    "pip",
-]
-dataframe = [
-    "narwhals>=0.8.7",
+    "pandas>=2.3.3",
+    "polars>=1.35.2",
+    "pytest>=9.0.1",
 ]

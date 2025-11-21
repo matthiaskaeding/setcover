@@ -8,9 +8,9 @@ ctest:
 
 # Install requirements
 reqs:
-	uv pip install -r py-setcover/pyproject.toml --all-extras
+	uv pip install -r {{justfile_directory()}}/py-setcover/pyproject.toml --all-extras --group dev
 # test the python package
-pytest: pyinstall
+pytest: pyinstall reqs
 	uv run pytest py-setcover/tests
 
 # Run all tests - cargo and python
