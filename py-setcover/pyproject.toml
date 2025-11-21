@@ -38,3 +38,6 @@ dev = [
     "pytest>=8.4",
     "pip",
 ]
+dataframe = [
+    "narwhals>=0.8.7",
+]

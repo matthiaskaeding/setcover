@@ -1,5 +1,5 @@
 import pytest
-from setcover import setcover
+from setcover import setcover, sets_from_dataframe
 
 
 def test_obvious_choice_is_taken():
@@ -181,3 +181,38 @@ def test_invalid_input():
 
     with pytest.raises(ValueError):
         setcover({"A": [1, 2, 3]}, algo="invalid")
+
+
+def test_dataframe_input_with_pandas():
+    pandas = pytest.importorskip("pandas")
+    pytest.importorskip("narwhals")
+
+    df = pandas.DataFrame(
+        {
+            "bucket": ["A", "A", "B", "C"],
+            "item": [1, 2, 3, 3],
+        }
+    )
+
+    result = setcover(df, set_column="bucket", element_column="item")
+    assert result == ["A", "B", "C"]
+
+
+def test_dataframe_input_with_polars_defaults():
+    polars = pytest.importorskip("polars")
+    pytest.importorskip("narwhals")
+
+    df = polars.DataFrame(
+        {"set": ["X", "X", "Y"], "element": ["a", "b", "c"], "extra": [1, 2, 3]}
+    )
+    result = setcover(df)
+    assert result == ["X", "Y"]
+
+
+def test_sets_from_dataframe_helper():
+    pandas = pytest.importorskip("pandas")
+    pytest.importorskip("narwhals")
+
+    df = pandas.DataFrame({"group": [1, 1, 2], "value": [10, 20, 30]})
+    mapping = sets_from_dataframe(df, set_column="group", element_column="value")
+    assert mapping == {1: [10, 20], 2: [30]}
