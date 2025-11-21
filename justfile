@@ -8,10 +8,10 @@ ctest:
 
 # Install requirements
 reqs:
-	uv pip install -r py-setcover/pyproject.toml --all-extras
+	uv pip install -r {{justfile_directory()}}/py-setcover/pyproject.toml --all-extras --group dev
 # test the python package
-pytest: pyinstall
-	uv run pytest py-setcover/tests
+pytest:
+	cd py-setcover && uv run pytest
 
 # Run all tests - cargo and python
 test: ctest pytest
@@ -44,7 +44,7 @@ clean:
 # lint python
 pylint:
 	uv tool run ruff format py-setcover
-	uv tool run ruff check --fix py-setcover 
+	uv tool run ruff check --fix py-setcover
 
 # Benchmark stuff
 
@@ -70,7 +70,7 @@ bench n_sets="100000" n_elements="2000" n_rows="10000000" seed="333":
 	@echo "Deleting simulation data"
 	rm scripts/benchmark/data.csv
 
-# Take timing for python. Install in release mode first 
+# Take timing for python. Install in release mode first
 pytime: pyinstall-rel
 	uv run scripts/benchmark/time_py.py --data-csv scripts/benchmark/data.csv
 # Take timing for python
