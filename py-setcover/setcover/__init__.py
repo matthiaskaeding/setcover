@@ -31,18 +31,33 @@ def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame
     )
 
 
-def set_cover(df_native: IntoFrame, set_col: str, el_col: str):
-    df = map_to_ints(df_native, set_col, el_col)
-    dfl = df.group_by("set", "set_int").agg(nw.col("element_int").list())
-    sets = dfl.get_column("element_int").to_list()
-    universe_size = df.get_column("element_int").max() + 1
-    sets = greedy_set_cover_dense_py(universe_size, sets)  # TODO: add import
-
-    lu = nw.DataFrame.from_dict(
-        {"set_int": sets},
-        backend=df.implementation,
+def set_cover(df_native: IntoFrame, set_col: str, el_col: str) -> nw.Series:
+    """
+    Find set cover
+    """
+    df = map_to_ints(df_native, set_col, el_col).sort("set_int", "element_int")
+    dfl = (
+        df.group_by("set", "set_int")
+        .agg(nw.col("element_int").len().alias("n"))
+        .sort("set_int")
     )
 
+    # Built sets as list of lists. We know element_int are dense integers without nulls
+    sets = []
+    start = 0
+    elements_int = df.get_column("element_int").to_list()
+    for n in dfl.get_column("n"):
+        sets.append(elements_int[start : start + n])
+        start += n
+
+    universe_size = df.get_column("element_int").max() + 1
+    chosen_sets = greedy_set_cover_dense_py(universe_size, sets)
+
+    # Map back
+    lu = nw.DataFrame.from_dict(
+        {"set_int": chosen_sets},
+        backend=df.implementation,
+    )
     solution = (
         dfl.select("set", "set_int")
         .join(lu, ["set_int"], "inner")
@@ -54,4 +69,4 @@ def set_cover(df_native: IntoFrame, set_col: str, el_col: str):
     return solution
 
 
-__all__ = ["map_to_ints"]
+__all__ = ["map_to_ints", "set_cover"]

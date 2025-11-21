@@ -1,6 +1,7 @@
 import pandas as pd
+import polars as pl
 
-from setcover import map_to_ints
+from setcover import map_to_ints, set_cover
 
 
 def test_map_to_ints_dense_ids_with_pandas():
@@ -17,3 +18,46 @@ def test_map_to_ints_dense_ids_with_pandas():
     # TODO: CHECK that column "set_int" and "element_int" have range 0 to n-1 where n-1 is
     # the number of unique vaklues
     #
+
+
+def _series_to_list(series):
+    if hasattr(series, "tolist"):
+        return series.tolist()
+    if hasattr(series, "to_list"):
+        return series.to_list()
+    return list(series)
+
+
+def test_set_cover_basic_dataframe():
+    df = pd.DataFrame(
+        {
+            "set_name": ["A", "A", "B", "C"],
+            "element": [1, 2, 2, 3],
+        }
+    )
+    result = set_cover(df, "set_name", "element")
+    assert _series_to_list(result) == ["A", "C"]
+    assert isinstance(result, pd.Series)
+
+
+def test_set_cover_polars_dataframe():
+    df = pl.DataFrame(
+        {
+            "bucket": ["X", "Y", "Z", "X"],
+            "item": ["hat", "hat", "scarf", "glove"],
+        }
+    )
+    result = set_cover(df, "bucket", "item")
+    assert _series_to_list(result) == ["X", "Z"]
+    assert isinstance(result, pl.Series)
+
+
+def test_set_cover_ignores_missing_rows():
+    df = pd.DataFrame(
+        {
+            "bucket": ["north", "south", None, "west"],
+            "element": [1, None, 2, 3],
+        }
+    )
+    result = set_cover(df, "bucket", "element")
+    assert _series_to_list(result) == ["north", "west"]
