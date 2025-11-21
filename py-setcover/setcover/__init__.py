@@ -69,4 +69,4 @@ def set_cover(df_native: IntoFrame, set_col: str, el_col: str) -> nw.Series:
     return solution
 
 
-__all__ = ["map_to_ints", "set_cover"]
+__all__ = ["set_cover"]
