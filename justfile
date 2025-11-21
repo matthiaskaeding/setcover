@@ -70,6 +70,15 @@ bench n_sets="100000" n_elements="2000" n_rows="10000000" seed="333":
 	@echo "Deleting simulation data"
 	rm scripts/benchmark/data.csv
 
+# Run a few benchmark variants back-to-back
+bench_alot:
+	# Stress test with many sets, modest element universe
+	just bench 150000 2000 12000000 111
+	# Stress test with large element universe but fewer sets
+	just bench 40000 8000 9000000 222
+	# Balanced scenario
+	just bench 80000 4000 10000000 333
+
 # Take timing for python. Install in release mode first
 pytime: pyinstall-rel
 	uv run scripts/benchmark/time_py.py --data-csv scripts/benchmark/data.csv
