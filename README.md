@@ -2,5 +2,6 @@
 
 High performance implementation of set-cover algorithms.
 
-* `RcppGreedySetCover`: R package using C++
-* `py-setcover`: This implements the greedy-set-cover algorithm using Rust, using the crates in crates-folder. About 60% faster.
+* `RcppGreedySetCover`: R package using C++.
+* `crates/setcover-core`: Rust algorithms. The greedy solver here is roughly **5× faster** than `RcppGreedySetCover` implementation.
+* `py-setcover`: Python bindings for the Rust crates, using Narwhals to stay dataframe-agnostic.

@@ -31,7 +31,7 @@ def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame
     )
 
 
-def set_cover(df_native: IntoFrame, set_col: str, el_col: str) -> nw.Series:
+def setcover(df_native: IntoFrame, set_col: str, el_col: str) -> nw.Series:
     """
     Find set cover
     """
@@ -69,4 +69,4 @@ def set_cover(df_native: IntoFrame, set_col: str, el_col: str) -> nw.Series:
     return solution
 
 
-__all__ = ["set_cover"]
+__all__ = ["setcover"]

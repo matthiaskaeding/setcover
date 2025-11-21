@@ -17,7 +17,7 @@ PY_PACKAGE_DIR = REPO_ROOT / "py-setcover"
 if str(PY_PACKAGE_DIR) not in sys.path:
     sys.path.insert(0, str(PY_PACKAGE_DIR))
 
-from setcover import set_cover
+from setcover import setcover
 
 
 def _series_to_list(series):
@@ -62,7 +62,7 @@ def main():
     print("-Results python" + "-" * (des_len - len("-Results python")))
 
     start = time.time()
-    cover_series = set_cover(df, "set", "element")
+    cover_series = setcover(df, "set", "element")
     end = time.time()
     cover = _series_to_list(cover_series)
     assert verify_cover(df, cover)

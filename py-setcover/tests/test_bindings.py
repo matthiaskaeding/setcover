@@ -1,7 +1,7 @@
 import pandas as pd
 import polars as pl
 
-from setcover import map_to_ints, set_cover
+from setcover import map_to_ints, setcover
 
 
 def test_map_to_ints_dense_ids_with_pandas():
@@ -35,7 +35,7 @@ def test_set_cover_basic_dataframe():
             "element": [1, 2, 2, 3],
         }
     )
-    result = set_cover(df, "set_name", "element")
+    result = setcover(df, "set_name", "element")
     assert _series_to_list(result) == ["A", "C"]
     assert isinstance(result, pd.Series)
 
@@ -47,7 +47,7 @@ def test_set_cover_polars_dataframe():
             "item": ["hat", "hat", "scarf", "glove"],
         }
     )
-    result = set_cover(df, "bucket", "item")
+    result = setcover(df, "bucket", "item")
     assert _series_to_list(result) == ["X", "Z"]
     assert isinstance(result, pl.Series)
 
@@ -59,5 +59,5 @@ def test_set_cover_ignores_missing_rows():
             "element": [1, None, 2, 3],
         }
     )
-    result = set_cover(df, "bucket", "element")
+    result = setcover(df, "bucket", "element")
     assert _series_to_list(result) == ["north", "west"]
