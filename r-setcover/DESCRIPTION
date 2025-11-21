@@ -1,0 +1,18 @@
+Package: rsetcover
+Type: Package
+Title: R bindings for the setcover Rust core
+Version: 0.1.0
+Authors@R: c(
+    person("Matthias", "Kaeding", email = "kaedingmatthias@gmail.com", role = c("aut", "cre"))
+)
+Description: Provides a thin R interface to the Rust implementations of the greedy set cover
+    algorithms from the 'setcover-core' crate. Lists of integer vectors or long-form data frames
+    can be passed directly from R, and the selected set identifiers are returned as character vectors.
+License: MIT
+Encoding: UTF-8
+LazyData: true
+NeedsCompilation: yes
+SystemRequirements: Rust (>= 1.70)
+LinkingTo: extendr
+Imports:
+    stats
