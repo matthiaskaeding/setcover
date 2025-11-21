@@ -12,8 +12,11 @@ Rust code should remain `cargo fmt` clean with 4-space indentation, idiomatic `s
 ## Testing Guidelines
 Prefer narrow, deterministic tests: Rust unit tests colocated next to the implementation in `crates/setcover-core/src`, and Python tests named `test_*.py` inside `py-setcover/tests`. Add regression fixtures whenever covering new benchmark scenarios. Execute `just test` before opening a PR; when touching both languages, include evidence that `cargo test` and `uv run pytest` both pass.
 
-## Commit & Pull Request Guidelines
-Repository history uses concise, imperative commit subjects (e.g., `Add parameters to benchmark`) that optionally reference the tracking issue using `(#NN)`. Follow that style and keep each commit focused on a single concern. Pull requests should describe the algorithmic change, mention affected crates (`setcover-core`, `py-setcover`, etc.), link to any benchmarks or tickets, and attach timing tables or screenshots whenever performance is cited. Cross-language updates must explain how the Rust core and bindings stay in sync.
+## Git: Commit & Pull Request Guidelines
+- Always work in a feature branch
+- Repository history uses concise, imperative commit subjects (e.g., `Add parameters to benchmark`) that optionally reference the tracking issue using `(#NN)`. Follow that style and keep each commit focused on a single concern. 
+-Pull requests should describe the algorithmic change, mention affected crates (`setcover-core`, `py-setcover`, etc.), link to any benchmarks or tickets, and attach timing tables or screenshots whenever performance is cited. Cross-language updates must explain how the Rust core and bindings stay in sync.
+
 
 ## Security & Configuration Tips
 Benchmark scripts read and write under `scripts/benchmark`; never point them at external data without sanitizing inputs. Use `uv venv` (`just venv`) to build an isolated environment so system-wide Python packages stay untouched. Secrets or API tokens are unnecessary for normal development—if you must handle datasets, keep them outside the repo or ensure `.gitignore` covers them.
