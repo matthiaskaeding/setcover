@@ -1,2 +1,0 @@
-useDynLib(rsetcover, .registration = TRUE)
-export(setcover)

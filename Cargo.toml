@@ -3,5 +3,5 @@ resolver = "2"
 members = [
     "crates/setcover-core",
     "py-setcover",
-    "r-setcover",
+    # We will add "r-setcover" here later
 ]
