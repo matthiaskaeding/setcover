@@ -37,8 +37,8 @@ Vazirani, Vijay V. (2001), Approximation Algorithms, Springer
 \seealso{
 Useful links:
 \itemize{
-  \item \url{http://github.com/matthiaskaeding/RcppGreedySetCover}
-  \item Report bugs at \url{http://github.com/matthiaskaeding/RcppGreedySetCover/issues}
+  \item \url{https://github.com/matthiaskaeding/setcover/tree/main/rcpp_greedy_set_cover/}
+  \item Report bugs at \url{https://github.com/matthiaskaeding/setcover/issues}
 }
 
 }
