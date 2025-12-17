@@ -18,4 +18,4 @@ Suggests:
 Config/testthat/edition: 3
 URL: http://github.com/matthiaskaeding/RcppGreedySetCover
 BugReports: http://github.com/matthiaskaeding/RcppGreedySetCover/issues
-RoxygenNote: 6.0.1
+RoxygenNote: 7.3.3
