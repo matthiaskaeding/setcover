@@ -1,4 +1,14 @@
 set shell := ["bash", "-lc"]
 
+# Run tests
 test:
     R -q -e "testthat::test_local()"
+
+
+# Run devtools checks
+dev-check:
+  Rscript -e "devtools::check()"
+
+# Run checks via R CMD
+r-check:
+  R CMD check .
