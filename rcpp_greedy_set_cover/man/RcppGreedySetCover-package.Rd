@@ -46,3 +46,4 @@ Useful links:
 \strong{Maintainer}: Matthias Kaeding \email{matthiaskaeding@posteo.de}
 
 }
+\keyword{internal}

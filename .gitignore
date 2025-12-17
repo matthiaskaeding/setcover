@@ -18,3 +18,4 @@ py-setcover/setcover/__pycache__*.so
 .vscode/settings.json
 .env
 scripts/benchmark/data.csv.sig
+rcpp_greedy_set_cover/RcppGreedySetCover.Rcheck
