@@ -8,7 +8,7 @@ Authors@R: c(
 Description: Provides a thin R interface to the Rust implementations of the greedy set cover
     algorithms from the 'setcover-core' crate. Lists of integer vectors or long-form data frames
     can be passed directly from R, and the selected set identifiers are returned as character vectors.
-License: MIT
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 NeedsCompilation: yes
