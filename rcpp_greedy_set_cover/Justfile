@@ -1,0 +1,4 @@
+set shell := ["bash", "-lc"]
+
+test:
+    R -q -e "testthat::test_local()"
