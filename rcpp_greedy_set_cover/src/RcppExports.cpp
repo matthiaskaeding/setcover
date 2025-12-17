@@ -5,6 +5,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // greedy_set_cover2
 IntegerMatrix greedy_set_cover2(const IntegerVector& i0, const IntegerVector& i1, const IntegerVector& group_sizes_i0, const IntegerVector& group_sizes_i1);
 RcppExport SEXP _RcppGreedySetCover_greedy_set_cover2(SEXP i0SEXP, SEXP i1SEXP, SEXP group_sizes_i0SEXP, SEXP group_sizes_i1SEXP) {

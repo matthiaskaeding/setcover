@@ -1,4 +1,3 @@
-// [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::depends(BH)]]
 
 
@@ -177,4 +176,3 @@ IntegerMatrix greedy_set_cover2(
   return Out;
   
 }
-
