@@ -2,6 +2,7 @@
 % Please edit documentation in R/RcppGreedySetCover.R
 \docType{package}
 \name{RcppGreedySetCover-package}
+\alias{RcppGreedySetCover}
 \alias{RcppGreedySetCover-package}
 \title{Fast Greedy Set Cover}
 \description{
@@ -33,3 +34,16 @@ For a nice introduction to the set cover problem and the greedy algorithm see Va
 \references{
 Vazirani, Vijay V. (2001), Approximation Algorithms, Springer
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{http://github.com/matthiaskaeding/RcppGreedySetCover}
+  \item Report bugs at \url{http://github.com/matthiaskaeding/RcppGreedySetCover/issues}
+}
+
+}
+\author{
+\strong{Maintainer}: Matthias Kaeding \email{matthiaskaeding@posteo.de}
+
+}
+\keyword{internal}

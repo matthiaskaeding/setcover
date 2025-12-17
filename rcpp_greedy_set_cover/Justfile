@@ -1,0 +1,36 @@
+set shell := ["bash", "-lc"]
+
+# Run tests
+# Run devtools checks
+# Execute testthat::test_local()
+test:
+    R -q -e "testthat::test_local()"
+
+# Run devtools::check()
+dev-check:
+  Rscript -e "devtools::check()"
+
+# Run checks via R CMD
+# Run R CMD check .
+r-check:
+  R CMD check .
+
+# Devtools document
+# Run devtools::document()
+document:
+  Rscript -e "devtools::document()"
+
+# Run devtools::test()
+# Run devtools::test()
+dev-test:
+  Rscript -e "devtools::test()"
+
+# Build package via devtools
+# Run devtools::build()
+build:
+  Rscript -e "devtools::build()"
+
+# Release package via devtools
+# Run devtools::release()
+release:
+  Rscript -e "devtools::release()"

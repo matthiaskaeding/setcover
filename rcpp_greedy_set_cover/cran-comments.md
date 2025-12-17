@@ -1,17 +1,12 @@
 ## Test environments
-* local Windows 7 install, R 3.4.3
-* local Windows 10 install, R 3.4.3
-* win-builder (devel)
-* ubuntu 14.04 (on travis-ci), R devel
-* ubuntu 14.04 (on travis-ci), R 3.3.3
-* ubuntu 14.04 (on travis-ci), R 3.4.2
+* local macOS 14.6 (Apple M1), R 4.3.3
 
 ## R CMD check results
-There were no ERRORs or WARNINGs. 
+0 errors | 1 warning | 1 note
 
-There was 1 NOTE:
-
-* New submission
-
-## Downstream dependencies
-There are currently no downstream dependencies for this package.
+* Warning: On macOS (Apple clang), a compiler warning
+  `warning: 'sprintf' is deprecated`
+  is emitted from `Rcpp/internal/r_coerce.h`. This originates in upstream
+  Rcpp headers, not from code in this package.
+* Note: `checking for future file timestamps ... unable to verify current time`
+  (local clock issue).

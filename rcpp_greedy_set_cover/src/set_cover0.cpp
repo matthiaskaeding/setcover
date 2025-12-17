@@ -1,4 +1,3 @@
-// [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::depends(BH)]]
 
 
@@ -96,7 +95,6 @@ IntegerMatrix greedy_set_cover2(
   idm_int idm_int_with_max_set_size;
 
   
-  int co=0;
   int co_sets=0;
   int row_out=0;
   double N_covered=0;
@@ -170,11 +168,9 @@ IntegerMatrix greedy_set_cover2(
   
     }
     
-    ++co;
     
   }
   
   return Out;
   
 }
-

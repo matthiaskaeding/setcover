@@ -25,6 +25,6 @@
 #' This simple algorithm exhibits surprisingly good properties. 
 #' For a nice introduction to the set cover problem and the greedy algorithm see Vazirani, 2001.
 #' 
-#' @docType package
 #' @name RcppGreedySetCover-package
-NULL
+#' @keywords internal
+"_PACKAGE"
