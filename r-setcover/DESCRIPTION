@@ -16,3 +16,6 @@ SystemRequirements: Rust (>= 1.70)
 LinkingTo: extendr
 Imports:
     stats
+Suggests:
+    testthat (>= 3.1.0)
+Config/testthat/edition: 3
