@@ -39,3 +39,26 @@ print(solution)  # -> ["A", "C"]
 The return type mirrors the backend you passed in (pandas `Series` in the
 example above, Polars `Series` if you provide a `pl.DataFrame`). Missing values
 are automatically dropped before solving.
+
+## Mapping input (labels → elements)
+
+`setcover` can also solve directly from a mapping of set labels to their
+elements. This is handy when your data isn’t in tabular form:
+
+```python
+from setcover import setcover
+
+sets = {"A": [1, 2], "B": [2], "C": [3]}
+
+# Default: return the chosen cover as a sub-dict
+cover = setcover(sets)
+# {"A": [1, 2], "C": [3]}
+
+# Only the chosen set labels
+labels = setcover(sets, only_sets=True)
+# ["A", "C"]
+```
+
+Notes
+- Duplicate elements within a set are ignored for correctness and speed.
+- When using DataFrames, pass column names via `set_col` and `el_col`.

@@ -61,3 +61,21 @@ def test_set_cover_ignores_missing_rows():
     )
     result = setcover(df, "bucket", "element")
     assert _series_to_list(result) == ["north", "west"]
+
+
+def test_set_cover_with_mapping_returns_cover_subdict():
+    # Cover {1,2,3} with labeled sets
+    sets = {"A": [1, 2], "B": [2], "C": [3]}
+    res = setcover(sets)
+    assert isinstance(res, dict)
+    assert list(res.keys()) == ["A", "C"]
+    assert res == {"A": [1, 2], "C": [3]}
+
+
+def test_set_cover_with_mapping_only_sets_returns_labels():
+    sets = {"A": [1, 2], "B": [2], "C": [3]}
+    res = setcover(sets, only_sets=True)
+    assert res == ["A", "C"]
+
+
+# setcover_pairs was intentionally removed; API remains label-only.

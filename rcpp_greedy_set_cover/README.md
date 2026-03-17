@@ -58,3 +58,13 @@ head(res)
 setequal(res$element, X$element)
 #> [1] TRUE
 ```
+
+## API summary
+
+- `greedySetCover(X, data.table = TRUE)`
+  - Returns long-form pairs of `(set, element)` for the chosen cover.
+  - Defaults to a keyed `data.table`; set `data.table = FALSE` for `data.frame`.
+
+- `setcover(X)`
+  - Returns only the chosen set labels (sorted), aligning with the Python package’s default.
+  - Input `X` is the same two-column long-form data (sets, elements).
