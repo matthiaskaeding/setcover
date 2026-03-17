@@ -33,7 +33,7 @@ def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame
 
 
 def setcover(
-    data: Union[IntoFrame, Mapping[Any, Iterable[Any]]],
+    data: Union[IntoFrame, Mapping[Any, Iterable[Any]], Sequence[Sequence[Any]]],
     set_col: Optional[str] = None,
     el_col: Optional[str] = None,
     only_sets: bool = False,
@@ -46,6 +46,9 @@ def setcover(
     - If `data` is a mapping from set labels to iterables of elements,
       returns the chosen cover as a sub-dict by default. If `only_sets=True`,
       returns only the selected set labels in input order.
+    - If `data` is a collection of collections (e.g., list of iterables),
+      returns the chosen subsets themselves by default. If `only_sets=True`,
+      returns the selected set indices (0-based).
     """
     # DataFrame path
     if set_col is not None and el_col is not None:
@@ -82,33 +85,54 @@ def setcover(
         return solution
 
     # Mapping path (set_label -> iterable of elements)
-    if not isinstance(data, Mapping):
+    if isinstance(data, Mapping):
+        elem_to_id: dict[Any, int] = {}
+        labels: list[Any] = []
+        sets_int: list[list[int]] = []
+        for label, subset in data.items():
+            if not isinstance(subset, Iterable) or isinstance(subset, (str, bytes)):
+                raise TypeError("each mapping value must be an iterable of elements")
+            labels.append(label)
+            ids = []
+            for el in subset:
+                if el not in elem_to_id:
+                    elem_to_id[el] = len(elem_to_id)
+                ids.append(elem_to_id[el])
+            # De-duplicate within a set while preserving insertion order
+            deduped = list(dict.fromkeys(ids))
+            sets_int.append(deduped)
+
+        universe_size = len(elem_to_id)
+        chosen = sorted(greedy_set_cover_dense_py(universe_size, sets_int))
+        if only_sets:
+            return [labels[i] for i in chosen]
+        # Return sub-dict preserving input order of chosen labels
+        return {labels[i]: data[labels[i]] for i in chosen}
+
+    # Sequence-of-sequences path (no labels)
+    if not isinstance(data, Iterable) or isinstance(data, (str, bytes)):
         raise TypeError(
-            "Unsupported input: provide a DataFrame with set_col/el_col or a mapping of set->elements"
+            "Unsupported input: provide a DataFrame (set_col/el_col), a mapping of set->elements, or a collection of collections"
         )
 
     elem_to_id: dict[Any, int] = {}
-    labels: list[Any] = []
     sets_int: list[list[int]] = []
-    for label, subset in data.items():
+    for subset in data:
         if not isinstance(subset, Iterable) or isinstance(subset, (str, bytes)):
-            raise TypeError("each mapping value must be an iterable of elements")
-        labels.append(label)
+            raise TypeError("each subset must be an iterable of elements")
         ids = []
         for el in subset:
             if el not in elem_to_id:
                 elem_to_id[el] = len(elem_to_id)
             ids.append(elem_to_id[el])
-        # De-duplicate within a set while preserving insertion order
         deduped = list(dict.fromkeys(ids))
         sets_int.append(deduped)
 
     universe_size = len(elem_to_id)
     chosen = sorted(greedy_set_cover_dense_py(universe_size, sets_int))
     if only_sets:
-        return [labels[i] for i in chosen]
-    # Return sub-dict preserving input order of chosen labels
-    return {labels[i]: data[labels[i]] for i in chosen}
+        return chosen
+    return [data[i] for i in chosen]
 
 
 __all__ = ["setcover"]

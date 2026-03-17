@@ -63,6 +63,19 @@ def test_set_cover_ignores_missing_rows():
     assert _series_to_list(result) == ["north", "west"]
 
 
+def test_set_cover_with_list_of_lists_returns_cover_by_default():
+    # Cover {1,2,3} using sets: S0={1,2}, S1={2}, S2={3}
+    sets = [[1, 2], [2], [3]]
+    res = setcover(sets)
+    assert res == [[1, 2], [3]]
+
+
+def test_set_cover_with_list_of_lists_can_return_indices():
+    sets = [[1, 2], [2], [3]]
+    res = setcover(sets, only_sets=True)
+    assert res == [0, 2]
+
+
 def test_set_cover_with_mapping_returns_cover_subdict():
     # Cover {1,2,3} with labeled sets
     sets = {"A": [1, 2], "B": [2], "C": [3]}

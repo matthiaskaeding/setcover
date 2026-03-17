@@ -1,5 +1,6 @@
 useDynLib(RcppGreedySetCover, .registration=TRUE)
 export(greedySetCover)
 export(setcover)
+export(setcover_list)
 importFrom(Rcpp, evalCpp)
 import(data.table)
