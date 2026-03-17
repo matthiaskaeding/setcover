@@ -10,8 +10,8 @@ pip install setcover
 ```
 
 The wheel ships with the compiled Rust extension, so no separate toolchain is
-required. For local development inside this repository, the `just pyinstall`
-target runs `maturin develop` so the package can be imported directly.
+ required. For local development inside this repository, use `make pyinstall`
+ to run `maturin develop` so the package can be imported directly.
 
 ## DataFrame-first API
 

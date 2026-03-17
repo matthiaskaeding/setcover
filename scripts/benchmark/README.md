@@ -20,5 +20,5 @@ uv run scripts/benchmark/time_py.py --data-csv scripts/benchmark/data.csv
 Rscript scripts/benchmark/time_r.r scripts/benchmark/data.csv
 ```
 
-The `just bench` recipe automates this (`prep-bench`, `pytime`, and `rtime`) so
+The `make bench` target automates this (`prep-bench`, `pytime`, and `rtime`) so
 you can compare outputs side by side after a single command.
