@@ -72,6 +72,28 @@ test_that("setcover is quiet unless asked", {
   expect_output(setcover(df, verbose = TRUE), "covered")
 })
 
+test_that("setcover handles an empty input", {
+  empty <- data.frame(
+    set = character(0),
+    element = integer(0),
+    stringsAsFactors = FALSE
+  )
+
+  res <- setcover(empty)
+
+  expect_s3_class(res, "data.table")
+  expect_identical(names(res), c("set", "step", "n_new", "n_cum"))
+  expect_identical(nrow(res), 0L)
+})
+
+test_that("setcover handles a single row", {
+  res <- setcover(data.frame(set = "A", element = 1L, stringsAsFactors = FALSE))
+
+  expect_identical(as.character(res$set), "A")
+  expect_identical(res$n_new, 1L)
+  expect_identical(res$n_cum, 1L)
+})
+
 test_that("setcover tolerates duplicate rows", {
   df <- data.frame(
     set = c("A", "A", "A", "A", "B", "B", "B", "C", "C"),

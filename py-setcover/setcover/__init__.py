@@ -87,7 +87,14 @@ def setcover(
             sets.append(elements_int[start : start + n])
             start += n
 
-        universe_size = df.get_column("element_int").max() + 1
+        # An empty frame — no rows, or every row dropped as null — has no max.
+        # pandas returns NaN and Polars returns None, and both blow up in the
+        # binding rather than yielding an empty cover. The universe is empty, so
+        # the solver has nothing to pick.
+        if df.shape[0]:
+            universe_size = int(df.get_column("element_int").max()) + 1
+        else:
+            universe_size = 0
         picks = greedy_set_cover_dense_py(universe_size, sets)
 
         # dfl is sorted by set_int, and set_int is a dense rank, so row i of dfl
