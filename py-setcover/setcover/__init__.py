@@ -1,8 +1,20 @@
+from collections.abc import Iterable, Mapping
+from itertools import accumulate
+from typing import Any, NamedTuple
+
 import narwhals as nw
 from narwhals.typing import IntoFrame
-from typing import Any, Iterable, Sequence, Union, Optional, Mapping
 
 from setcover._setcover_lib import greedy_set_cover_dense_py
+
+
+class Step(NamedTuple):
+    """One greedy selection, in the order the solver made it."""
+
+    set: Any
+    step: int
+    n_new: int
+    n_cum: int
 
 
 def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame:
@@ -11,7 +23,9 @@ def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame
 
     The mapping is generated via dense ranking so that each unique value maps to
     a stable integer in the range [0, n-1].
-    This will drop missing values silently.
+    This will drop missing values and duplicate (set, element) pairs silently.
+    Duplicates must go: the solver scores a candidate set by counting its
+    elements, so a repeated pair would inflate that set's apparent gain.
     """
     df = nw.from_native(df_native, eager_only=True)
     sets = nw.col(set_col)
@@ -24,6 +38,7 @@ def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame
     return (
         df.select(set_col, el_col)
         .drop_nulls()
+        .unique([set_col, el_col])
         .select(
             sets.alias("set"),
             _dense_rank_expr(sets).alias("set_int"),
@@ -33,19 +48,27 @@ def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame
 
 
 def setcover(
-    data: Union[IntoFrame, Mapping[Any, Iterable[Any]]],
-    set_col: Optional[str] = None,
-    el_col: Optional[str] = None,
+    data: IntoFrame | Mapping[Any, Iterable[Any]],
+    set_col: str | None = None,
+    el_col: str | None = None,
     only_sets: bool = False,
 ):
     """
     Greedy set cover solver.
 
+    Results come back in greedy selection order, highest-gain set first, so any
+    prefix is itself a good partial cover: take the first k rows for the k sets
+    that cover the most. `n_new` is each pick's marginal gain and `n_cum` the
+    running total, which is where you look to decide where to truncate.
+
     - If `data` is a DataFrame-like (pandas/polars via Narwhals), provide
-      `set_col` and `el_col`; returns a native Series of chosen set labels.
+      `set_col` and `el_col`; returns a native DataFrame with columns
+      `set`, `step`, `n_new`, `n_cum` in the same backend as the input.
     - If `data` is a mapping from set labels to iterables of elements,
-      returns the chosen cover as a sub-dict by default. If `only_sets=True`,
-      returns only the selected set labels in input order.
+      returns a list of `Step` named tuples (no DataFrame backend assumed).
+
+    With `only_sets=True` you get just the chosen labels, still in selection
+    order: a native Series for the DataFrame path, a list for the mapping path.
     """
     # DataFrame path
     if set_col is not None and el_col is not None:
@@ -65,21 +88,24 @@ def setcover(
             start += n
 
         universe_size = df.get_column("element_int").max() + 1
-        chosen_sets = greedy_set_cover_dense_py(universe_size, sets)
+        picks = greedy_set_cover_dense_py(universe_size, sets)
 
-        # Map back
-        lu = nw.DataFrame.from_dict(
-            {"set_int": chosen_sets},
+        # dfl is sorted by set_int, and set_int is a dense rank, so row i of dfl
+        # is the set the solver saw at index i.
+        labels = dfl.get_column("set").to_list()
+        n_new = [gain for _, gain in picks]
+        solution = nw.DataFrame.from_dict(
+            {
+                "set": [labels[idx] for idx, _ in picks],
+                "step": list(range(len(picks))),
+                "n_new": n_new,
+                "n_cum": list(accumulate(n_new)),
+            },
             backend=df.implementation,
         )
-        solution = (
-            dfl.select("set", "set_int")
-            .join(lu, ["set_int"], "inner")
-            .get_column("set")
-            .sort()
-            .to_native()
-        )
-        return solution
+        if only_sets:
+            return solution.get_column("set").to_native()
+        return solution.to_native()
 
     # Mapping path (set_label -> iterable of elements)
     if not isinstance(data, Mapping):
@@ -104,11 +130,15 @@ def setcover(
         sets_int.append(deduped)
 
     universe_size = len(elem_to_id)
-    chosen = sorted(greedy_set_cover_dense_py(universe_size, sets_int))
+    picks = greedy_set_cover_dense_py(universe_size, sets_int)
     if only_sets:
-        return [labels[i] for i in chosen]
-    # Return sub-dict preserving input order of chosen labels
-    return {labels[i]: data[labels[i]] for i in chosen}
+        return [labels[idx] for idx, _ in picks]
+
+    cumulative = accumulate(gain for _, gain in picks)
+    return [
+        Step(set=labels[idx], step=step, n_new=gain, n_cum=n_cum)
+        for step, ((idx, gain), n_cum) in enumerate(zip(picks, cumulative))
+    ]
 
 
-__all__ = ["setcover"]
+__all__ = ["Step", "map_to_ints", "setcover"]

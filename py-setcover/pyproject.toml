@@ -15,7 +15,9 @@ authors = [
     { name = "Matthias Kaeding", email = "kaedingmatthias@gmail.com" }
 ]
 license = { text = "MIT" } # Or "Apache-2.0"
-requires-python = ">=3.10"
+# Upper bound tracks pyo3 0.21, which refuses to build against CPython > 3.12.
+# Without it, 3.13 users hit an opaque build failure instead of a resolver error.
+requires-python = ">=3.10,<3.13"
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: 3",

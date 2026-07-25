@@ -1,7 +1,9 @@
+use crate::Pick;
+
 pub type BitSet = Vec<u64>;
 
 pub fn make_bitset(universe_size: usize, elements: &[usize]) -> BitSet {
-    let num_words = (universe_size + 63) / 64;
+    let num_words = universe_size.div_ceil(64);
     let mut bits = vec![0u64; num_words];
 
     for &e in elements {
@@ -17,7 +19,7 @@ pub fn make_bitset(universe_size: usize, elements: &[usize]) -> BitSet {
 }
 
 fn make_uncovered(universe_size: usize) -> BitSet {
-    let num_words = (universe_size + 63) / 64;
+    let num_words = universe_size.div_ceil(64);
     let mut bits = vec![!0u64; num_words];
 
     let excess = num_words * 64 - universe_size;
@@ -40,7 +42,7 @@ fn coverage_gain(set_bits: &BitSet, uncovered: &BitSet) -> usize {
 
 /// Greedy set cover using bitsets.
 /// `sets_bits[i]` is the bitset representation of set i.
-pub fn greedy_set_cover_bitset(universe_size: usize, sets_bits: &[BitSet]) -> Option<Vec<usize>> {
+pub fn greedy_set_cover_bitset(universe_size: usize, sets_bits: &[BitSet]) -> Option<Vec<Pick>> {
     if universe_size == 0 {
         return Some(Vec::new());
     }
@@ -71,17 +73,20 @@ pub fn greedy_set_cover_bitset(universe_size: usize, sets_bits: &[BitSet]) -> Op
         };
 
         used[idx] = true;
-        chosen.push(idx);
 
         let bits = &sets_bits[idx];
+        let mut n_new = 0usize;
         for (u, s) in uncovered.iter_mut().zip(bits.iter()) {
             let newly_covered = *u & *s;
             let count = newly_covered.count_ones() as usize;
             if count > 0 {
                 remaining -= count;
+                n_new += count;
             }
             *u &= !s;
         }
+
+        chosen.push(Pick { set: idx, n_new });
     }
 
     Some(chosen)

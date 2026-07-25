@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Keep in sync with the Makefile's RUFF pin.
+  RUFF_VERSION: "0.16.0"
+
+jobs:
+  rust:
+    name: Rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Test
+        run: cargo test --workspace
+
+  python:
+    name: Python
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Upper bound is pyo3 0.21's max supported CPython, not a preference.
+        # Raise it together with the pyo3 dependency.
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+      # Pinned: ruff changes its default rule set between minor releases, so an
+      # unpinned `uv tool run ruff` lints differently in CI than on a developer
+      # machine with an older one cached. Bump deliberately.
+      - name: Format
+        run: uv tool run ruff@${{ env.RUFF_VERSION }} format --check py-setcover
+      - name: Lint
+        run: uv tool run ruff@${{ env.RUFF_VERSION }} check py-setcover
+      # uv builds the pyo3 extension via the maturin backend before collecting.
+      # --reinstall-package is load-bearing: uv keys its cached wheel on the
+      # package version, so a restored cache happily serves an extension built
+      # from older Rust source and the suite tests the wrong binary.
+      - name: Test
+        run: uv run --reinstall-package setcover pytest
+        working-directory: py-setcover
+
+  r:
+    name: R
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          working-directory: rcpp_greedy_set_cover
+          extra-packages: any::rcmdcheck
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          working-directory: rcpp_greedy_set_cover
+          upload-snapshots: true

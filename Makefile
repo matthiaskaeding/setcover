@@ -26,8 +26,11 @@ ctest:
 reqs:
 	uv pip install -r py-setcover/pyproject.toml --all-extras --group dev
 
+# --reinstall-package is load-bearing: uv keys its cached wheel on the package
+# version, so without it a warm cache serves an extension built from stale
+# Rust source and the suite tests the wrong binary. See AGENTS.md.
 pytest:
-	cd py-setcover && uv run pytest
+	cd py-setcover && uv run --reinstall-package setcover pytest
 
 test: ctest pytest
 
@@ -52,9 +55,14 @@ clean:
 	rm -rf .venv/lib/python*/site-packages/_setcover*
 	rm -f scripts/benchmark/data.csv
 
+# Keep in sync with RUFF_VERSION in .github/workflows/ci.yml. ruff changes its
+# default rule set between minor releases, so an unpinned ruff lints
+# differently here than in CI.
+RUFF ?= ruff@0.16.0
+
 pylint:
-	uv tool run ruff format py-setcover
-	uv tool run ruff check --fix py-setcover
+	uv tool run $(RUFF) format py-setcover
+	uv tool run $(RUFF) check --fix py-setcover
 
 prep-bench:
 	@echo "Creating simulation data with:"
