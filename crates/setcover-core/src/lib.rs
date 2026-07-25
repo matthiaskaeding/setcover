@@ -9,6 +9,21 @@ pub use mapping::compress_universe;
 use std::collections::HashMap;
 use std::hash::Hash;
 
+/// One greedy selection, in the order the solver made it.
+///
+/// Greedy set cover is a sequence: each pick takes the set covering the most
+/// still-uncovered elements, so any prefix of the picks is itself a good
+/// partial cover. `n_new` is that pick's marginal gain — the count of elements
+/// it was the first to cover — which is what tells a caller where the coverage
+/// curve flattens.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Pick {
+    /// Index of the chosen set in the caller's input.
+    pub set: usize,
+    /// Elements newly covered by this pick.
+    pub n_new: usize,
+}
+
 /// Public router that mirrors the historical API.
 ///
 /// Accepts a `HashMap` of sets keyed by user identifiers and returns the
@@ -23,7 +38,7 @@ where
         panic!("Error: Unable to find a set cover using algorithm {algo}");
     });
 
-    let mut chosen: Vec<K> = cover.into_iter().map(|idx| keys[idx].clone()).collect();
+    let mut chosen: Vec<K> = cover.into_iter().map(|p| keys[p.set].clone()).collect();
     chosen.sort();
     chosen
 }
@@ -38,7 +53,7 @@ where
         panic!("Error: Unable to find a set cover using algorithm {algo}");
     });
 
-    let mut chosen: Vec<K> = cover.into_iter().map(|idx| keys[idx].clone()).collect();
+    let mut chosen: Vec<K> = cover.into_iter().map(|p| keys[p.set].clone()).collect();
     chosen.sort();
     chosen
 }
@@ -47,7 +62,7 @@ where
 pub fn greedy_set_cover_generic<T: Eq + Hash + Clone>(
     sets: &[Vec<T>],
     algo: &str,
-) -> Option<Vec<usize>> {
+) -> Option<Vec<Pick>> {
     match algo {
         "dense" => greedy_set_cover_dense_generic(sets),
         "bitset" => greedy_set_cover_bitset_generic(sets),
@@ -56,7 +71,7 @@ pub fn greedy_set_cover_generic<T: Eq + Hash + Clone>(
     }
 }
 
-fn run_greedy<T: Eq + Hash + Clone>(sets: &[Vec<T>], algo: &str) -> Option<Vec<usize>> {
+fn run_greedy<T: Eq + Hash + Clone>(sets: &[Vec<T>], algo: &str) -> Option<Vec<Pick>> {
     let route = match algo {
         "greedy-standard" => "dense",
         "greedy-bitvec" => "bitset",
@@ -93,8 +108,8 @@ where
 
 /// Generic wrapper: greedy dense algorithm for arbitrary `T`.
 ///
-/// Returns indices of chosen sets (into `sets`), or None if not coverable.
-pub fn greedy_set_cover_dense_generic<T: Eq + Hash + Clone>(sets: &[Vec<T>]) -> Option<Vec<usize>> {
+/// Returns picks in selection order, or None if not coverable.
+pub fn greedy_set_cover_dense_generic<T: Eq + Hash + Clone>(sets: &[Vec<T>]) -> Option<Vec<Pick>> {
     let (dense_sets, universe) = mapping::compress_universe(sets);
     let universe_size = universe.len();
 
@@ -103,10 +118,8 @@ pub fn greedy_set_cover_dense_generic<T: Eq + Hash + Clone>(sets: &[Vec<T>]) -> 
 
 /// Generic wrapper: greedy bitset algorithm for arbitrary `T`.
 ///
-/// Returns indices of chosen sets (into `sets`), or None if not coverable.
-pub fn greedy_set_cover_bitset_generic<T: Eq + Hash + Clone>(
-    sets: &[Vec<T>],
-) -> Option<Vec<usize>> {
+/// Returns picks in selection order, or None if not coverable.
+pub fn greedy_set_cover_bitset_generic<T: Eq + Hash + Clone>(sets: &[Vec<T>]) -> Option<Vec<Pick>> {
     let (dense_sets, universe) = mapping::compress_universe(sets);
     let universe_size = universe.len();
 
@@ -121,7 +134,7 @@ pub fn greedy_set_cover_bitset_generic<T: Eq + Hash + Clone>(
 /// Textbook greedy: pick the set covering the most uncovered elements each round.
 pub fn greedy_set_cover_textbook_generic<T: Eq + Hash + Clone>(
     sets: &[Vec<T>],
-) -> Option<Vec<usize>> {
+) -> Option<Vec<Pick>> {
     use std::collections::HashSet;
 
     let mut uncovered: HashSet<T> = sets.iter().flatten().cloned().collect();
@@ -154,11 +167,15 @@ pub fn greedy_set_cover_textbook_generic<T: Eq + Hash + Clone>(
         };
 
         used[idx] = true;
-        chosen.push(idx);
 
+        let mut n_new = 0usize;
         for element in &sets[idx] {
-            uncovered.remove(element);
+            if uncovered.remove(element) {
+                n_new += 1;
+            }
         }
+
+        chosen.push(Pick { set: idx, n_new });
     }
 
     Some(chosen)
@@ -397,6 +414,48 @@ mod tests {
             set_cover_2.windows(2).all(|w| w[0] <= w[1]),
             "Output from greedy-textbook is not sorted"
         );
+    }
+
+    #[test]
+    fn test_picks_are_in_greedy_order_with_marginal_gains() {
+        // B is the best first pick (3 new), then C (2 new). Alphabetical
+        // sorting would put A first and lose that.
+        let sets = vec![
+            vec![10, 20],     // A
+            vec![10, 20, 30], // B
+            vec![40, 50],     // C
+        ];
+
+        for algo in ["dense", "bitset", "textbook"] {
+            let picks = greedy_set_cover_generic(&sets, algo).unwrap();
+            assert_eq!(picks[0], Pick { set: 1, n_new: 3 }, "algo {algo}");
+            assert_eq!(picks[1], Pick { set: 2, n_new: 2 }, "algo {algo}");
+            assert_eq!(picks.len(), 2, "algo {algo}");
+        }
+    }
+
+    #[test]
+    fn test_marginal_gains_sum_to_universe_size() {
+        let sets = vec![vec![1, 2, 3], vec![3, 4, 5], vec![5, 6, 7]];
+        let universe: HashSet<i32> = sets.iter().flatten().cloned().collect();
+
+        for algo in ["dense", "bitset", "textbook"] {
+            let picks = greedy_set_cover_generic(&sets, algo).unwrap();
+            let total: usize = picks.iter().map(|p| p.n_new).sum();
+            assert_eq!(total, universe.len(), "algo {algo}");
+        }
+    }
+
+    #[test]
+    fn test_marginal_gain_ignores_duplicate_elements() {
+        // The selection scan counts the repeated 1 three times; n_new must not.
+        let sets = vec![vec![1, 1, 1, 2], vec![3]];
+
+        for algo in ["dense", "bitset", "textbook"] {
+            let picks = greedy_set_cover_generic(&sets, algo).unwrap();
+            let dup_set = picks.iter().find(|p| p.set == 0).unwrap();
+            assert_eq!(dup_set.n_new, 2, "algo {algo}");
+        }
     }
 
     #[test]

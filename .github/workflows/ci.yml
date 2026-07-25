@@ -47,8 +47,11 @@ jobs:
       - name: Lint
         run: uv tool run ruff check py-setcover
       # uv builds the pyo3 extension via the maturin backend before collecting.
+      # --reinstall-package is load-bearing: uv keys its cached wheel on the
+      # package version, so a restored cache happily serves an extension built
+      # from older Rust source and the suite tests the wrong binary.
       - name: Test
-        run: uv run pytest
+        run: uv run --reinstall-package setcover pytest
         working-directory: py-setcover
 
   r:
