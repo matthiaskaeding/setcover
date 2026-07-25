@@ -14,11 +14,17 @@ uv run scripts/benchmark/make_data.py \
 uv run scripts/benchmark/time_py.py --data-csv scripts/benchmark/data.csv
 ```
 
-3. Time the Rcpp implementation:
+3. Time the Rcpp implementation. The second argument picks which entry point to
+   time — `setcover` (one row per chosen set, the like-for-like comparison
+   against Python) or `pairs` for `greedySetCover()`. Run them separately:
+   sharing one process gives the second a warm cache.
 
 ```bash
-Rscript scripts/benchmark/time_r.r scripts/benchmark/data.csv
+Rscript scripts/benchmark/time_r.r scripts/benchmark/data.csv setcover
+Rscript scripts/benchmark/time_r.r scripts/benchmark/data.csv pairs
 ```
 
-The `just bench` recipe automates this (`prep-bench`, `pytime`, and `rtime`) so
-you can compare outputs side by side after a single command.
+`make bench` automates all of this (`prep-bench`, `pytime`, `rtime`, then
+cleanup) so you can compare outputs side by side after a single command, and
+`make bench_alot` runs the three scenarios reported in the root README. Both
+accept `N_SETS`, `N_ELEMENTS`, `N_ROWS` and `SEED` overrides.

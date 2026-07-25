@@ -62,11 +62,14 @@ def main():
     print("-Results python" + "-" * (des_len - len("-Results python")))
 
     start = time.time()
-    cover_series = setcover(df, "set", "element")
+    picks = setcover(df, "set", "element")
     end = time.time()
-    cover = _series_to_list(cover_series)
+
+    cover = _series_to_list(picks["set"])
     assert verify_cover(df, cover)
-    print("set_cover (dense)")
+    assert picks["n_cum"][-1] == df["element"].n_unique()
+
+    print("setcover (dense)")
     print(f"Cover: {len(cover)} sets")
     print(f"Time:  {end - start:.1f} seconds")
 

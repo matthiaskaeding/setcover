@@ -36,13 +36,18 @@ pytest:
 
 test: ctest pytest
 
+# maturin needs an explicit VIRTUAL_ENV, and the project venv lives under
+# py-setcover/ (that is the one `uv run` provisions). The old `--uv` form ran
+# from the repo root, where uv cannot resolve --group and there is no .venv.
+VENV = $(CURDIR)/py-setcover/.venv
+
 pyinstall:
 	@echo "Installing in development mode"
-	uv tool run maturin develop -m py-setcover/Cargo.toml --uv
+	cd py-setcover && uv sync -q && VIRTUAL_ENV=$(VENV) uv tool run maturin develop -m Cargo.toml
 
 pyinstall-rel:
 	@echo "Installing in release mode"
-	uv tool run maturin develop --release -m py-setcover/Cargo.toml --uv
+	cd py-setcover && uv sync -q && VIRTUAL_ENV=$(VENV) uv tool run maturin develop --release -m Cargo.toml
 
 rsyn:
 	reposyn -i rcpp_greedy_set_cover/ -c
@@ -89,8 +94,10 @@ bench_alot:
 pytime: pyinstall-rel
 	uv run scripts/benchmark/time_py.py --data-csv scripts/benchmark/data.csv
 
+# Separate processes so neither function benefits from the other's warm cache.
 rtime:
-	Rscript scripts/benchmark/time_r.r scripts/benchmark/data.csv
+	Rscript scripts/benchmark/time_r.r scripts/benchmark/data.csv setcover
+	Rscript scripts/benchmark/time_r.r scripts/benchmark/data.csv pairs
 
 time: pytime rtime
 
