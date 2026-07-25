@@ -23,8 +23,10 @@ venv:
 ctest:
 	cargo test
 
+# Run from py-setcover: --group resolves against the working directory, not
+# against the -r path, so this fails from the repo root.
 reqs:
-	uv pip install -r py-setcover/pyproject.toml --all-extras --group dev
+	cd py-setcover && uv pip install -r pyproject.toml --all-extras --group dev
 
 # --reinstall-package is load-bearing: uv keys its cached wheel on the package
 # version, so without it a warm cache serves an extension built from stale
