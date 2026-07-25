@@ -1,7 +1,9 @@
+from collections.abc import Iterable, Mapping
+from itertools import accumulate
+from typing import Any, NamedTuple
+
 import narwhals as nw
 from narwhals.typing import IntoFrame
-from itertools import accumulate
-from typing import Any, Iterable, NamedTuple, Union, Optional, Mapping
 
 from setcover._setcover_lib import greedy_set_cover_dense_py
 
@@ -46,9 +48,9 @@ def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame
 
 
 def setcover(
-    data: Union[IntoFrame, Mapping[Any, Iterable[Any]]],
-    set_col: Optional[str] = None,
-    el_col: Optional[str] = None,
+    data: IntoFrame | Mapping[Any, Iterable[Any]],
+    set_col: str | None = None,
+    el_col: str | None = None,
     only_sets: bool = False,
 ):
     """
@@ -139,4 +141,4 @@ def setcover(
     ]
 
 
-__all__ = ["setcover", "map_to_ints", "Step"]
+__all__ = ["Step", "map_to_ints", "setcover"]

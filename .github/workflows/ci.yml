@@ -10,6 +10,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Keep in sync with the Makefile's RUFF pin.
+  RUFF_VERSION: "0.16.0"
+
 jobs:
   rust:
     name: Rust
@@ -42,10 +46,13 @@ jobs:
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
+      # Pinned: ruff changes its default rule set between minor releases, so an
+      # unpinned `uv tool run ruff` lints differently in CI than on a developer
+      # machine with an older one cached. Bump deliberately.
       - name: Format
-        run: uv tool run ruff format --check py-setcover
+        run: uv tool run ruff@${{ env.RUFF_VERSION }} format --check py-setcover
       - name: Lint
-        run: uv tool run ruff check py-setcover
+        run: uv tool run ruff@${{ env.RUFF_VERSION }} check py-setcover
       # uv builds the pyo3 extension via the maturin backend before collecting.
       # --reinstall-package is load-bearing: uv keys its cached wheel on the
       # package version, so a restored cache happily serves an extension built

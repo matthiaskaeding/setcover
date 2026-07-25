@@ -94,7 +94,7 @@ where
     entries.sort_by(|a, b| {
         b.1.len()
             .cmp(&a.1.len())
-            .then_with(|| format!("{:?}", &a.0).cmp(&format!("{:?}", &b.0)))
+            .then_with(|| format!("{:?}", a.0).cmp(&format!("{:?}", b.0)))
     });
 
     let mut keys = Vec::with_capacity(entries.len());

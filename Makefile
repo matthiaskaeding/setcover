@@ -55,9 +55,14 @@ clean:
 	rm -rf .venv/lib/python*/site-packages/_setcover*
 	rm -f scripts/benchmark/data.csv
 
+# Keep in sync with RUFF_VERSION in .github/workflows/ci.yml. ruff changes its
+# default rule set between minor releases, so an unpinned ruff lints
+# differently here than in CI.
+RUFF ?= ruff@0.16.0
+
 pylint:
-	uv tool run ruff format py-setcover
-	uv tool run ruff check --fix py-setcover
+	uv tool run $(RUFF) format py-setcover
+	uv tool run $(RUFF) check --fix py-setcover
 
 prep-bench:
 	@echo "Creating simulation data with:"

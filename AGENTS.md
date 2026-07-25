@@ -16,7 +16,7 @@ Always run the Python suite as `uv run --reinstall-package setcover pytest` (wha
 When updating any README.md are any other documentation write concisely.
 
 ## Coding Style & Naming Conventions
-Rust code should remain `cargo fmt` clean with 4-space indentation, idiomatic `snake_case` symbols, and early returns for impossible states. Python follows `ruff format` defaults, also 4 spaces, with modules and functions in `snake_case` and classes in `CamelCase`. Run `make pylint` (which wraps `ruff format` and `ruff check --fix`) before submitting; do not hand-edit generated bindings in `py-setcover/setcover`.
+Rust code should remain `cargo fmt` clean with 4-space indentation, idiomatic `snake_case` symbols, and early returns for impossible states. Python follows `ruff format` defaults, also 4 spaces, with modules and functions in `snake_case` and classes in `CamelCase`. Run `make pylint` (which wraps `ruff format` and `ruff check --fix`) before submitting; do not hand-edit generated bindings in `py-setcover/setcover`. ruff is pinned to an exact version in both the Makefile and `.github/workflows/ci.yml` — it changes its default rule set between minor releases, so an unpinned `uv tool run ruff` lints differently locally than in CI. Bump the two in step.
 
 ## Testing Guidelines
 Prefer narrow, deterministic tests: Rust unit tests colocated next to the implementation in `crates/setcover-core/src`, and Python tests named `test_*.py` inside `py-setcover/tests`. Add regression fixtures whenever covering new benchmark scenarios. Execute `make test` before opening a PR; when touching both languages, include evidence that `cargo test` and `uv run pytest` both pass.
