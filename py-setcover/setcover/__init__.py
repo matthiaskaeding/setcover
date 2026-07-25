@@ -1,6 +1,6 @@
 import narwhals as nw
 from narwhals.typing import IntoFrame
-from typing import Any, Iterable, Sequence, Union, Optional, Mapping
+from typing import Any, Iterable, Union, Optional, Mapping
 
 from setcover._setcover_lib import greedy_set_cover_dense_py
 
@@ -11,7 +11,9 @@ def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame
 
     The mapping is generated via dense ranking so that each unique value maps to
     a stable integer in the range [0, n-1].
-    This will drop missing values silently.
+    This will drop missing values and duplicate (set, element) pairs silently.
+    Duplicates must go: the solver scores a candidate set by counting its
+    elements, so a repeated pair would inflate that set's apparent gain.
     """
     df = nw.from_native(df_native, eager_only=True)
     sets = nw.col(set_col)
@@ -24,6 +26,7 @@ def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame
     return (
         df.select(set_col, el_col)
         .drop_nulls()
+        .unique([set_col, el_col])
         .select(
             sets.alias("set"),
             _dense_rank_expr(sets).alias("set_int"),

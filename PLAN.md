@@ -1,24 +1,21 @@
 # Next steps
 
-Prioritized plan as of 2026-07-25. Rust suite passes (8/8); no CI exists yet.
+Prioritized plan as of 2026-07-25. Items 1 and 2 are done; the rest are open.
 
-## 1. CI (highest value)
+## 1. CI — DONE
 
-No `.github/` directory — nothing runs on push/PR.
+`.github/workflows/ci.yml` runs three jobs on push to `main` and on every PR:
+Rust (`fmt --check`, `clippy -D warnings`, `test`), Python (`ruff` plus
+`pytest` on 3.10 and 3.13), and `R CMD check` for `rcpp_greedy_set_cover`.
 
-- Add a GitHub Actions workflow: `cargo fmt --check`, `cargo clippy`, `cargo test`,
-  maturin build + `pytest` for `py-setcover`, `ruff check`.
-- Optional second job: `R CMD check` for `rcpp_greedy_set_cover`.
+## 2. Correctness fixes (py-setcover) — DONE
 
-## 2. Correctness fixes (py-setcover)
-
-- **Dedupe (set, element) pairs in the DataFrame path.** The mapping path
-  dedupes; the DataFrame path does not. `greedy_set_cover_dense` counts
-  duplicate elements multiple times when scoring gains, so repeated long-format
-  rows can make greedy pick a worse set. Add `.unique()` after `drop_nulls`
-  plus a regression test with duplicated rows.
-- Finish the TODO in `test_map_to_ints_dense_ids_with_pandas`: assert both id
-  columns cover exactly `0..n-1`.
+- Deduped (set, element) pairs in `map_to_ints`. `greedy_set_cover_dense`
+  scores a candidate by counting its elements, so a repeated long-format row
+  inflated that set's apparent gain and could pull a redundant set into the
+  cover.
+- Finished the TODO in `test_map_to_ints_dense_ids_with_pandas`; both id
+  columns are now asserted dense over `0..n-1`.
 
 ## 3. Error handling (setcover-core)
 

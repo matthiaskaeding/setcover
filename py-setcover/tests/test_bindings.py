@@ -15,9 +15,10 @@ def test_map_to_ints_dense_ids_with_pandas():
     result = map_to_ints(df, "set_name", "element").to_native()
     assert result.shape[1] == 3
     assert list(result.columns) == ["set", "set_int", "element_int"]
-    # TODO: CHECK that column "set_int" and "element_int" have range 0 to n-1 where n-1 is
-    # the number of unique vaklues
-    #
+
+    # Both id columns must be dense: exactly 0..n-1 for n unique input values.
+    assert set(result["set_int"]) == set(range(df["set_name"].nunique()))
+    assert set(result["element_int"]) == set(range(df["element"].nunique()))
 
 
 def _series_to_list(series):
@@ -61,6 +62,32 @@ def test_set_cover_ignores_missing_rows():
     )
     result = setcover(df, "bucket", "element")
     assert _series_to_list(result) == ["north", "west"]
+
+
+def test_map_to_ints_drops_duplicate_pairs():
+    df = pd.DataFrame(
+        {
+            "set_name": ["A", "A", "A", "B"],
+            "element": ["x", "x", "y", "x"],
+        }
+    )
+    result = map_to_ints(df, "set_name", "element").to_native()
+    assert result.shape[0] == 3
+
+
+def test_set_cover_unaffected_by_duplicate_rows():
+    # A covers {1,2}, B covers {1,2,3}, C covers {4,5}. Greedy should take B
+    # then C. Repeating the (A,1) row must not inflate A's apparent gain to 4
+    # and pull it into the cover.
+    rows = {
+        "set_name": ["A", "A", "A", "A", "B", "B", "B", "C", "C"],
+        "element": [1, 1, 1, 2, 1, 2, 3, 4, 5],
+    }
+    with_dups = setcover(pd.DataFrame(rows), "set_name", "element")
+    deduped = setcover(pd.DataFrame(rows).drop_duplicates(), "set_name", "element")
+
+    assert _series_to_list(with_dups) == ["B", "C"]
+    assert _series_to_list(with_dups) == _series_to_list(deduped)
 
 
 def test_set_cover_with_mapping_returns_cover_subdict():

@@ -1,7 +1,7 @@
 pub type BitSet = Vec<u64>;
 
 pub fn make_bitset(universe_size: usize, elements: &[usize]) -> BitSet {
-    let num_words = (universe_size + 63) / 64;
+    let num_words = universe_size.div_ceil(64);
     let mut bits = vec![0u64; num_words];
 
     for &e in elements {
@@ -17,7 +17,7 @@ pub fn make_bitset(universe_size: usize, elements: &[usize]) -> BitSet {
 }
 
 fn make_uncovered(universe_size: usize) -> BitSet {
-    let num_words = (universe_size + 63) / 64;
+    let num_words = universe_size.div_ceil(64);
     let mut bits = vec![!0u64; num_words];
 
     let excess = num_words * 64 - universe_size;

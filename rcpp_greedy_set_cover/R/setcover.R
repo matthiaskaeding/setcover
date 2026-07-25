@@ -6,6 +6,7 @@
 #' @param X Two-column data.frame/data.table in long format: column 1 are set
 #'   labels, column 2 are elements.
 #' @return A character (or factor) vector of chosen set labels, sorted.
+#' @export
 #' @examples
 #' df <- data.frame(set = c("A","A","B","C"), element = c(1L,2L,2L,3L))
 #' setcover(df)
