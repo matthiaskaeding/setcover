@@ -4,13 +4,17 @@
 \alias{greedySetCover}
 \title{Greedy Set Cover}
 \usage{
-greedySetCover(X, data.table = TRUE)
+greedySetCover(X, data.table = TRUE, verbose = TRUE)
 }
 \arguments{
 \item{X}{Two-column data.frame in long format: Column 1 identifies the sets, column 2 the elements.}
 
-\item{data.table}{If \code{TRUE} returns a \code{data.table} with keys given by sets and elements. 
+\item{data.table}{If \code{TRUE} returns a \code{data.table} with keys given by sets and elements.
 If FALSE returns a \code{data.frame}, sorted by sets and elements.}
+
+\item{verbose}{If \code{TRUE} (the default) prints the solver's coverage
+progress. Defaults to \code{TRUE} so existing behaviour is unchanged; pass
+\code{FALSE} to silence it.}
 }
 \value{
 If \code{data.table == TRUE} a \code{data.table}, keyed by sets and elements. 
