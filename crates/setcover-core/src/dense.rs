@@ -1,14 +1,12 @@
 use crate::Pick;
 
-/// Greedy set cover on a dense universe {0, 1, ..., universe_size - 1}.
+/// Run greedy until no unused set covers anything new.
 ///
-/// `sets[i]` is list of elements in set i (each in 0..universe_size).
-/// Returns the picks in selection order, or None if coverage impossible.
-pub fn greedy_set_cover_dense(universe_size: usize, sets: &[Vec<usize>]) -> Option<Vec<Pick>> {
-    if universe_size == 0 {
-        return Some(Vec::new());
-    }
-
+/// Returns the picks in selection order and how many elements were left
+/// uncovered. A non-zero remainder means the sets do not span the universe;
+/// whether that is an error depends on where `universe_size` came from, which
+/// is the caller's business.
+pub(crate) fn greedy_picks(universe_size: usize, sets: &[Vec<usize>]) -> (Vec<Pick>, usize) {
     let mut uncovered = vec![true; universe_size];
     let mut remaining = universe_size;
     let mut chosen_sets = Vec::new();
@@ -36,7 +34,8 @@ pub fn greedy_set_cover_dense(universe_size: usize, sets: &[Vec<usize>]) -> Opti
 
         let idx = match best_idx {
             Some(i) if best_cover > 0 => i,
-            _ => return None,
+            // Nothing left to gain: the remaining elements are unreachable.
+            _ => break,
         };
 
         used[idx] = true;
@@ -58,5 +57,46 @@ pub fn greedy_set_cover_dense(universe_size: usize, sets: &[Vec<usize>]) -> Opti
         chosen_sets.push(Pick { set: idx, n_new });
     }
 
-    Some(chosen_sets)
+    (chosen_sets, remaining)
+}
+
+/// Greedy set cover on a dense universe {0, 1, ..., universe_size - 1}.
+///
+/// `sets[i]` is a list of elements in set i (each in 0..universe_size).
+/// Returns the picks in selection order, or None when `sets` does not span the
+/// universe. That is reachable here precisely because the caller supplies
+/// `universe_size` independently of the sets — see
+/// [`crate::greedy_set_cover_dense_generic`] for the variant that derives it
+/// and therefore cannot fail.
+pub fn greedy_set_cover_dense(universe_size: usize, sets: &[Vec<usize>]) -> Option<Vec<Pick>> {
+    let (picks, remaining) = greedy_picks(universe_size, sets);
+    if remaining == 0 {
+        Some(picks)
+    } else {
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn returns_none_when_sets_do_not_span_the_universe() {
+        // Element 2 appears in no set, so a universe of size 3 is not coverable.
+        assert_eq!(greedy_set_cover_dense(3, &[vec![0], vec![1]]), None);
+    }
+
+    #[test]
+    fn empty_universe_is_trivially_covered() {
+        assert_eq!(greedy_set_cover_dense(0, &[]), Some(Vec::new()));
+        assert_eq!(greedy_set_cover_dense(0, &[vec![]]), Some(Vec::new()));
+    }
+
+    #[test]
+    fn out_of_range_elements_are_ignored() {
+        // 9 is outside the universe and must not be counted as a gain.
+        let picks = greedy_set_cover_dense(2, &[vec![0, 9], vec![1]]).unwrap();
+        assert_eq!(picks.iter().map(|p| p.n_new).sum::<usize>(), 2);
+    }
 }

@@ -33,12 +33,7 @@ where
     T: Clone + Hash + Eq,
 {
     let (keys, vec_sets) = materialize_sets(sets);
-
-    // The universe is derived from these same sets, so their union covers it by
-    // construction and the solver cannot fail. See #28 for removing the
-    // remaining unreachable panic from this signature.
-    let cover = greedy_set_cover_dense_generic(&vec_sets)
-        .expect("a universe derived from the input sets is always coverable");
+    let cover = greedy_set_cover_dense_generic(&vec_sets);
 
     let mut chosen: Vec<K> = cover.into_iter().map(|p| keys[p.set].clone()).collect();
     chosen.sort();
@@ -66,13 +61,23 @@ where
 
 /// Greedy set cover for arbitrary element types.
 ///
-/// Compresses the universe to dense integers, then runs the dense solver.
-/// Returns the picks in selection order, or None if not coverable.
-pub fn greedy_set_cover_dense_generic<T: Eq + Hash + Clone>(sets: &[Vec<T>]) -> Option<Vec<Pick>> {
+/// Compresses the universe to dense integers, then runs the dense solver, and
+/// returns the picks in selection order.
+///
+/// Infallible by construction: the universe is derived from `sets`, so their
+/// union spans it and greedy always terminates with everything covered. Use
+/// [`greedy_set_cover_dense`] when you supply `universe_size` yourself, since
+/// that one can genuinely fail.
+pub fn greedy_set_cover_dense_generic<T: Eq + Hash + Clone>(sets: &[Vec<T>]) -> Vec<Pick> {
     let (dense_sets, universe) = mapping::compress_universe(sets);
-    let universe_size = universe.len();
 
-    dense::greedy_set_cover_dense(universe_size, &dense_sets)
+    let (picks, remaining) = dense::greedy_picks(universe.len(), &dense_sets);
+    debug_assert_eq!(
+        remaining, 0,
+        "a universe derived from the input sets is always fully covered"
+    );
+
+    picks
 }
 
 #[cfg(test)]
@@ -85,11 +90,8 @@ mod tests {
     /// Deliberately naive: rescan every set each round and count matches
     /// against a `HashSet` of uncovered elements. Slow, but obviously correct,
     /// which is the point — the dense solver is checked against it.
-    fn greedy_set_cover_textbook<T: Eq + Hash + Clone>(sets: &[Vec<T>]) -> Option<Vec<Pick>> {
+    fn greedy_set_cover_textbook<T: Eq + Hash + Clone>(sets: &[Vec<T>]) -> Vec<Pick> {
         let mut uncovered: HashSet<T> = sets.iter().flatten().cloned().collect();
-        if uncovered.is_empty() {
-            return Some(Vec::new());
-        }
 
         let mut chosen = Vec::new();
         let mut used = vec![false; sets.len()];
@@ -111,7 +113,8 @@ mod tests {
 
             let idx = match best_idx {
                 Some(i) if best_gain > 0 => i,
-                _ => return None,
+                // Unreachable: the universe is derived from these same sets.
+                _ => break,
             };
 
             used[idx] = true;
@@ -126,7 +129,7 @@ mod tests {
             chosen.push(Pick { set: idx, n_new });
         }
 
-        Some(chosen)
+        chosen
     }
 
     fn make_universe<K, T>(sets: &HashMap<K, Vec<T>>) -> HashSet<T>
@@ -276,7 +279,7 @@ mod tests {
             vec![40, 50],     // C
         ];
 
-        let picks = greedy_set_cover_dense_generic(&sets).unwrap();
+        let picks = greedy_set_cover_dense_generic(&sets);
         assert_eq!(picks[0], Pick { set: 1, n_new: 3 });
         assert_eq!(picks[1], Pick { set: 2, n_new: 2 });
         assert_eq!(picks.len(), 2);
@@ -288,7 +291,7 @@ mod tests {
         let sets = vec![vec![1, 2, 3], vec![3, 4, 5], vec![5, 6, 7]];
         let universe: HashSet<i32> = sets.iter().flatten().cloned().collect();
 
-        let picks = greedy_set_cover_dense_generic(&sets).unwrap();
+        let picks = greedy_set_cover_dense_generic(&sets);
         let total: usize = picks.iter().map(|p| p.n_new).sum();
         assert_eq!(total, universe.len());
         assert_matches_oracle(&sets);
@@ -299,7 +302,7 @@ mod tests {
         // The selection scan counts the repeated 1 three times; n_new must not.
         let sets = vec![vec![1, 1, 1, 2], vec![3]];
 
-        let picks = greedy_set_cover_dense_generic(&sets).unwrap();
+        let picks = greedy_set_cover_dense_generic(&sets);
         let dup_set = picks.iter().find(|p| p.set == 0).unwrap();
         assert_eq!(dup_set.n_new, 2);
         assert_matches_oracle(&sets);
