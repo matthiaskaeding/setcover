@@ -26,8 +26,11 @@ ctest:
 reqs:
 	uv pip install -r py-setcover/pyproject.toml --all-extras --group dev
 
+# --reinstall-package is load-bearing: uv keys its cached wheel on the package
+# version, so without it a warm cache serves an extension built from stale
+# Rust source and the suite tests the wrong binary. See AGENTS.md.
 pytest:
-	cd py-setcover && uv run pytest
+	cd py-setcover && uv run --reinstall-package setcover pytest
 
 test: ctest pytest
 
