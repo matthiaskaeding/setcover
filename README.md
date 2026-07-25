@@ -4,7 +4,8 @@ High performance implementation of set-cover algorithms.
 
 * `RcppGreedySetCover`: R package using C++.
 * `crates/setcover-core`: Rust algorithms. Solving the same task end to end is
-  roughly **4× faster** than `RcppGreedySetCover` on the benchmarks below.
+  roughly **4× faster** than `RcppGreedySetCover` on the benchmarks below —
+  down to design differences rather than the language, see below.
 * `py-setcover`: Python bindings for the Rust crates, using Narwhals to stay
   dataframe-agnostic.
 
@@ -47,10 +48,24 @@ per element and fills every one of them, whatever wrapper called it; R's
 always materializes the full element-to-set assignment, while the Rust dense
 solver never does.
 
-The fair reading is therefore "the R package is ~4× slower for the same task",
-not "boost multi_index is ~4× slower than this Rust loop". Part of the gap is
-that design difference rather than raw implementation speed, and it would
-narrow if the C++ gained a labels-only path.
+**The gap comes from design decisions, not from the choice of language.** Both
+sides are compiled native code, and nothing measured here is faster in Rust
+than the same approach would be in C++. Two design differences account for it:
+
+* **Output contract.** The C++ always materializes the full element-to-set
+  assignment, even when the caller only wants labels. The Rust path never
+  builds it.
+* **Representation.** The C++ maintains a `boost::multi_index` of set sizes
+  over `unordered_set` members, so each round chases pointers and hashes
+  elements individually. The dense Rust solver scans flat `Vec`s against a
+  `bool` array — cache-friendly, though it rescans every candidate each round
+  rather than updating incrementally.
+
+So read the table as "the R package is ~4× slower for the same task", not "Rust
+is ~4× faster than C++". A labels-only path in the C++, or a lazy priority
+queue on either side, would move this number considerably more than the
+language does. These runs are not profiled, so how the gap splits between the
+two causes above is unquantified.
 
 The two implementations break ties differently — Rust takes the first set with
 the maximal gain, while boost's `ordered_non_unique` index picks an arbitrary
