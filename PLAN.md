@@ -52,17 +52,25 @@ Still to do for R:
   or route `setcover()` through them.
 - `materialize_sets` sorts keys via `format!("{:?}")` — use `Ord` directly.
 
-## 5. Repo hygiene
+## 5. Repo hygiene — partly done
 
+- DONE: `AGENTS.md` now documents `make`, not the removed `just` targets, and
+  carries the uv extension-staleness warning.
 - Delete leftover `rcpp_greedy_set_cover/Justfile` (root justfile was replaced
   by the Makefile).
-- Update `AGENTS.md`: it still documents `just` targets; the workflow is `make`.
+- `make reqs` is broken: it runs `uv pip install -r py-setcover/pyproject.toml
+  --group dev` from the repo root, but `--group` resolves relative to the
+  working directory, so it fails with "No pyproject.toml found". Run it from
+  `py-setcover/`.
 
-## 6. Benchmarks & docs
+## 6. Benchmarks & docs — partly done
 
+- DONE: `py-setcover/README.md` documents both input modes and the new
+  `set`/`step`/`n_new`/`n_cum` result format.
 - Commit a benchmark results table (from `make bench_alot`) to back the "5×
-  faster" claim in `README.md`.
-- Document the Python API (DataFrame + mapping inputs) in `py-setcover/README.md`.
+  faster" claim in `README.md`. Note the comparison is between two independent
+  implementations, not two bindings over one core — R runs its own C++.
+- Root `README.md` still describes the old labels-only output.
 
 ## 7. Release path (later)
 
