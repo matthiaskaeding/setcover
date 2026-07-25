@@ -2,22 +2,34 @@
 % Please edit documentation in R/setcover.R
 \name{setcover}
 \alias{setcover}
-\title{Set cover (labels only)}
+\title{Set cover}
 \usage{
-setcover(X)
+setcover(X, set_col = 1L, el_col = 2L, verbose = FALSE)
 }
 \arguments{
-\item{X}{Two-column data.frame/data.table in long format: column 1 are set
-labels, column 2 are elements.}
+\item{X}{data.frame/data.table in long format, with one column of set labels
+and one of elements. Extra columns are ignored.}
+
+\item{set_col}{Column holding the set labels, by name or position. Defaults
+to the first column.}
+
+\item{el_col}{Column holding the elements, by name or position. Defaults to
+the second column.}
+
+\item{verbose}{If \code{TRUE}, print the solver's coverage progress.}
 }
 \value{
-A character (or factor) vector of chosen set labels, sorted.
+A \code{data.table} with one row per chosen set, in selection order:
+\code{set} (the label), \code{step} (selection order, starting at 1),
+\code{n_new} (elements this pick was the first to cover) and \code{n_cum}
+(the running total, reaching the universe size in the final row).
 }
 \description{
-Returns the chosen set labels of a greedy set cover on a two-column
-long-form input.
+Greedy set cover on a long-form input. Results come back in greedy selection
+order, highest-gain set first, so any prefix is itself a good partial cover:
+take the first k rows for the k sets that cover the most.
 }
 \examples{
-df <- data.frame(set = c("A","A","B","C"), element = c(1L,2L,2L,3L))
+df <- data.frame(set = c("A", "A", "B", "C"), element = c(1L, 2L, 2L, 3L))
 setcover(df)
 }

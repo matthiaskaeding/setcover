@@ -7,9 +7,10 @@ Depends: R (>= 3.2.5)
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-Imports: 
+Imports:
     data.table,
-    Rcpp (>= 0.12.14)
+    Rcpp (>= 0.12.14),
+    utils
 LinkingTo: 
     BH,
     Rcpp (>= 0.12.14)

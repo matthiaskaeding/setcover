@@ -65,6 +65,22 @@ setequal(res$element, X$element)
   - Returns long-form pairs of `(set, element)` for the chosen cover.
   - Defaults to a keyed `data.table`; set `data.table = FALSE` for `data.frame`.
 
-- `setcover(X)`
-  - Returns only the chosen set labels (sorted), aligning with the Python package’s default.
-  - Input `X` is the same two-column long-form data (sets, elements).
+- `setcover(X, set_col = 1L, el_col = 2L, verbose = FALSE)`
+  - Returns a `data.table` with one row per chosen set, **in greedy selection
+    order**: `set`, `step` (starting at 1), `n_new` (elements this pick was the
+    first to cover) and `n_cum` (running total). Any prefix is itself a good
+    partial cover, so `head(res, 10)` is the ten sets covering the most.
+  - `set_col`/`el_col` take a column name or position; other columns are ignored.
+  - Quiet by default; `verbose = TRUE` prints the solver's coverage progress.
+
+``` r
+df <- data.frame(set = c("A", "A", "B", "B", "B", "C", "C"),
+                 element = c(10L, 20L, 10L, 20L, 30L, 40L, 50L))
+RcppGreedySetCover::setcover(df)
+#>    set step n_new n_cum
+#> 1:   B    1     3     3
+#> 2:   C    2     2     5
+```
+
+Note `step` is 1-based here, matching R's conventions; the Python package uses
+0-based `step`. The other columns are identical across the two.

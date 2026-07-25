@@ -17,7 +17,7 @@ Rust (`fmt --check`, `clippy -D warnings`, `test`), Python (`ruff` plus
 - Finished the TODO in `test_map_to_ints_dense_ids_with_pandas`; both id
   columns are now asserted dense over `0..n-1`.
 
-## 2b. Rich result format — Python DONE, R open
+## 2b. Rich result format — DONE
 
 The solvers return `Pick { set, n_new }` in greedy selection order instead of
 bare sorted indices. Python's `setcover()` surfaces that as `set`, `step`,
@@ -25,14 +25,20 @@ bare sorted indices. Python's `setcover()` surfaces that as `set`, `step`,
 named tuples for the mapping path. `only_sets=True` gives labels in selection
 order.
 
-Still to do for R:
-- Return an equivalent `data.table` from `setcover()`; `greedy_set_cover2`
-  already appends rows in selection order, and `setkey(Out)` in the R wrapper
-  is what discards it.
-- Decide whether R's `step` is 0-based (parity with Python) or 1-based
-  (idiomatic R). Cross-language test fixtures depend on this.
-- `greedySetCover()` prints coverage to the console unconditionally, with no
-  way to silence it. Add a `verbose` argument while touching this code.
+R's `setcover()` returns the equivalent `data.table`. `greedy_set_cover2`
+already emitted rows grouped by chosen set in selection order, so run lengths
+over its first column are the marginal gains — no C++ change was needed, only
+dropping the `setkey(Out)` that discarded the ordering. It also gained
+`set_col`/`el_col` (name or position, defaulting to the first two columns) and
+is now quiet unless `verbose = TRUE`.
+
+`step` is 0-based in Python and 1-based in R, each matching its language's
+conventions. Cross-language fixtures must account for the offset; every other
+column is identical.
+
+`greedySetCover()` is deliberately untouched — it is the CRAN-published API,
+and its unconditional console output is part of that contract. Silencing it
+would be a breaking change to ship separately.
 
 ## 3. Error handling (setcover-core)
 
@@ -70,7 +76,9 @@ Still to do for R:
 - Commit a benchmark results table (from `make bench_alot`) to back the "5×
   faster" claim in `README.md`. Note the comparison is between two independent
   implementations, not two bindings over one core — R runs its own C++.
-- Root `README.md` still describes the old labels-only output.
+- DONE: `rcpp_greedy_set_cover/README.md` documents the new `setcover()`. Its
+  `README.Rmd` now carries the same section, since the two had drifted apart —
+  the API summary had been hand-added to the generated `.md` only.
 
 ## 7. Release path (later)
 
