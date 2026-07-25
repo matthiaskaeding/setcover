@@ -1,6 +1,6 @@
 # Python bindings for setcover
 
-`setcover` exposes the high-performance Rust algorithms from `setcover-core`
+`setcover` exposes the high-performance Rust solver from `setcover-core`
 through a thin Python API that works with familiar DataFrame libraries.
 
 ## Installation

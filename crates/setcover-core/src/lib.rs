@@ -1,8 +1,6 @@
-mod bitset;
 mod dense;
 mod mapping;
 
-pub use bitset::{greedy_set_cover_bitset, BitSet};
 pub use dense::greedy_set_cover_dense;
 pub use mapping::compress_universe;
 
@@ -24,78 +22,38 @@ pub struct Pick {
     pub n_new: usize,
 }
 
-/// Public router that mirrors the historical API.
+/// Greedy set cover over a map of user-identified sets.
 ///
-/// Accepts a `HashMap` of sets keyed by user identifiers and returns the
-/// keys of the chosen sets (sorted for stability).
-pub fn greedy_set_cover<K, T>(sets: &HashMap<K, Vec<T>>, algo: String) -> Vec<K>
+/// Returns the keys of the chosen sets, sorted for stability. Use
+/// [`greedy_set_cover_dense_generic`] when the selection order and the
+/// per-pick gains matter.
+pub fn greedy_set_cover<K, T>(sets: &HashMap<K, Vec<T>>) -> Vec<K>
 where
-    K: Clone + Hash + Eq + std::fmt::Debug + Ord,
-    T: Clone + Hash + Eq + std::fmt::Debug,
+    K: Clone + Hash + Eq + Ord,
+    T: Clone + Hash + Eq,
 {
     let (keys, vec_sets) = materialize_sets(sets);
-    let cover = run_greedy(&vec_sets, &algo).unwrap_or_else(|| {
-        panic!("Error: Unable to find a set cover using algorithm {algo}");
-    });
+
+    // The universe is derived from these same sets, so their union covers it by
+    // construction and the solver cannot fail. See #28 for removing the
+    // remaining unreachable panic from this signature.
+    let cover = greedy_set_cover_dense_generic(&vec_sets)
+        .expect("a universe derived from the input sets is always coverable");
 
     let mut chosen: Vec<K> = cover.into_iter().map(|p| keys[p.set].clone()).collect();
     chosen.sort();
     chosen
-}
-
-/// Variant where the set elements are already dense integers.
-pub fn greedy_set_cover_int_elements<K>(sets: &HashMap<K, Vec<usize>>, algo: String) -> Vec<K>
-where
-    K: Clone + Hash + Eq + std::fmt::Debug + Ord,
-{
-    let (keys, vec_sets) = materialize_sets(sets);
-    let cover = run_greedy(&vec_sets, &algo).unwrap_or_else(|| {
-        panic!("Error: Unable to find a set cover using algorithm {algo}");
-    });
-
-    let mut chosen: Vec<K> = cover.into_iter().map(|p| keys[p.set].clone()).collect();
-    chosen.sort();
-    chosen
-}
-
-/// Route across the available greedy strategies for a generic Vec-of-Vecs input.
-pub fn greedy_set_cover_generic<T: Eq + Hash + Clone>(
-    sets: &[Vec<T>],
-    algo: &str,
-) -> Option<Vec<Pick>> {
-    match algo {
-        "dense" => greedy_set_cover_dense_generic(sets),
-        "bitset" => greedy_set_cover_bitset_generic(sets),
-        "textbook" => greedy_set_cover_textbook_generic(sets),
-        _ => None,
-    }
-}
-
-fn run_greedy<T: Eq + Hash + Clone>(sets: &[Vec<T>], algo: &str) -> Option<Vec<Pick>> {
-    let route = match algo {
-        "greedy-standard" => "dense",
-        "greedy-bitvec" => "bitset",
-        "greedy-textbook" => "textbook",
-        other => {
-            panic!(
-                "Wrong algo choice '{other}', must be 'greedy-bitvec', 'greedy-standard' or 'greedy-textbook'"
-            );
-        }
-    };
-    greedy_set_cover_generic(sets, route)
 }
 
 fn materialize_sets<K, T>(sets: &HashMap<K, Vec<T>>) -> (Vec<K>, Vec<Vec<T>>)
 where
-    K: Clone + Hash + Eq + std::fmt::Debug,
+    K: Clone + Hash + Eq + Ord,
     T: Clone,
 {
     let mut entries: Vec<(K, Vec<T>)> = sets.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
-    entries.sort_by(|a, b| {
-        b.1.len()
-            .cmp(&a.1.len())
-            .then_with(|| format!("{:?}", a.0).cmp(&format!("{:?}", b.0)))
-    });
+    // Largest first, ties broken by key order. `K: Ord` is the right comparison
+    // here; the previous Debug-string tie-break sorted 10 before 9.
+    entries.sort_by(|a, b| b.1.len().cmp(&a.1.len()).then_with(|| a.0.cmp(&b.0)));
 
     let mut keys = Vec::with_capacity(entries.len());
     let mut vec_sets = Vec::with_capacity(entries.len());
@@ -106,9 +64,10 @@ where
     (keys, vec_sets)
 }
 
-/// Generic wrapper: greedy dense algorithm for arbitrary `T`.
+/// Greedy set cover for arbitrary element types.
 ///
-/// Returns picks in selection order, or None if not coverable.
+/// Compresses the universe to dense integers, then runs the dense solver.
+/// Returns the picks in selection order, or None if not coverable.
 pub fn greedy_set_cover_dense_generic<T: Eq + Hash + Clone>(sets: &[Vec<T>]) -> Option<Vec<Pick>> {
     let (dense_sets, universe) = mapping::compress_universe(sets);
     let universe_size = universe.len();
@@ -116,81 +75,86 @@ pub fn greedy_set_cover_dense_generic<T: Eq + Hash + Clone>(sets: &[Vec<T>]) -> 
     dense::greedy_set_cover_dense(universe_size, &dense_sets)
 }
 
-/// Generic wrapper: greedy bitset algorithm for arbitrary `T`.
-///
-/// Returns picks in selection order, or None if not coverable.
-pub fn greedy_set_cover_bitset_generic<T: Eq + Hash + Clone>(sets: &[Vec<T>]) -> Option<Vec<Pick>> {
-    let (dense_sets, universe) = mapping::compress_universe(sets);
-    let universe_size = universe.len();
-
-    let sets_bits: Vec<BitSet> = dense_sets
-        .iter()
-        .map(|s| bitset::make_bitset(universe_size, s))
-        .collect();
-
-    bitset::greedy_set_cover_bitset(universe_size, &sets_bits)
-}
-
-/// Textbook greedy: pick the set covering the most uncovered elements each round.
-pub fn greedy_set_cover_textbook_generic<T: Eq + Hash + Clone>(
-    sets: &[Vec<T>],
-) -> Option<Vec<Pick>> {
-    use std::collections::HashSet;
-
-    let mut uncovered: HashSet<T> = sets.iter().flatten().cloned().collect();
-    if uncovered.is_empty() {
-        return Some(Vec::new());
-    }
-
-    let mut chosen = Vec::new();
-    let mut used = vec![false; sets.len()];
-
-    while !uncovered.is_empty() {
-        let mut best_idx: Option<usize> = None;
-        let mut best_gain = 0usize;
-
-        for (idx, set) in sets.iter().enumerate() {
-            if used[idx] {
-                continue;
-            }
-
-            let gain = set.iter().filter(|e| uncovered.contains(*e)).count();
-            if gain > best_gain {
-                best_gain = gain;
-                best_idx = Some(idx);
-            }
-        }
-
-        let idx = match best_idx {
-            Some(i) if best_gain > 0 => i,
-            _ => return None,
-        };
-
-        used[idx] = true;
-
-        let mut n_new = 0usize;
-        for element in &sets[idx] {
-            if uncovered.remove(element) {
-                n_new += 1;
-            }
-        }
-
-        chosen.push(Pick { set: idx, n_new });
-    }
-
-    Some(chosen)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::collections::{HashMap, HashSet};
+
+    /// Textbook greedy, kept as a reference oracle for the dense solver.
+    ///
+    /// Deliberately naive: rescan every set each round and count matches
+    /// against a `HashSet` of uncovered elements. Slow, but obviously correct,
+    /// which is the point — the dense solver is checked against it.
+    fn greedy_set_cover_textbook<T: Eq + Hash + Clone>(sets: &[Vec<T>]) -> Option<Vec<Pick>> {
+        let mut uncovered: HashSet<T> = sets.iter().flatten().cloned().collect();
+        if uncovered.is_empty() {
+            return Some(Vec::new());
+        }
+
+        let mut chosen = Vec::new();
+        let mut used = vec![false; sets.len()];
+
+        while !uncovered.is_empty() {
+            let mut best_idx: Option<usize> = None;
+            let mut best_gain = 0usize;
+
+            for (idx, set) in sets.iter().enumerate() {
+                if used[idx] {
+                    continue;
+                }
+                let gain = set.iter().filter(|e| uncovered.contains(*e)).count();
+                if gain > best_gain {
+                    best_gain = gain;
+                    best_idx = Some(idx);
+                }
+            }
+
+            let idx = match best_idx {
+                Some(i) if best_gain > 0 => i,
+                _ => return None,
+            };
+
+            used[idx] = true;
+
+            let mut n_new = 0usize;
+            for element in &sets[idx] {
+                if uncovered.remove(element) {
+                    n_new += 1;
+                }
+            }
+
+            chosen.push(Pick { set: idx, n_new });
+        }
+
+        Some(chosen)
+    }
 
     fn make_universe<K, T>(sets: &HashMap<K, Vec<T>>) -> HashSet<T>
     where
         T: Clone + Hash + Eq,
     {
         sets.values().flatten().cloned().collect()
+    }
+
+    fn check_coverage<K, T>(cover: &[K], sets: &HashMap<K, Vec<T>>, universe: &HashSet<T>)
+    where
+        K: Clone + Hash + Eq,
+        T: Clone + Hash + Eq + std::fmt::Debug,
+    {
+        let covered: HashSet<T> = cover
+            .iter()
+            .flat_map(|key| sets.get(key).unwrap().iter().cloned())
+            .collect();
+        assert_eq!(&covered, universe);
+    }
+
+    /// The dense solver must agree with the textbook oracle, pick for pick.
+    fn assert_matches_oracle<T: Eq + Hash + Clone + std::fmt::Debug>(sets: &[Vec<T>]) {
+        assert_eq!(
+            greedy_set_cover_dense_generic(sets),
+            greedy_set_cover_textbook(sets),
+            "dense solver disagreed with the textbook oracle"
+        );
     }
 
     #[test]
@@ -200,31 +164,9 @@ mod tests {
         sets.insert("B".to_string(), vec![1, 2]);
         sets.insert("C".to_string(), vec![2]);
 
-        let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
-        let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
-        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
-        let universe = make_universe(&sets);
-
-        fn check_coverage(
-            cover: &[String],
-            sets: &HashMap<String, Vec<i32>>,
-            universe: &HashSet<i32>,
-        ) {
-            let covered_sets: HashMap<String, Vec<i32>> = cover
-                .iter()
-                .map(|key| (key.clone(), sets.get(key).unwrap().clone()))
-                .collect();
-            let covered_universe = make_universe(&covered_sets);
-            assert_eq!(universe, &covered_universe);
-        }
-
-        assert_eq!(set_cover_0, vec!["A".to_string()]);
-        assert_eq!(set_cover_1, vec!["A".to_string()]);
-        assert_eq!(set_cover_2, vec!["A".to_string()]);
-
-        check_coverage(&set_cover_0, &sets, &universe);
-        check_coverage(&set_cover_1, &sets, &universe);
-        check_coverage(&set_cover_2, &sets, &universe);
+        let cover = greedy_set_cover(&sets);
+        assert_eq!(cover, vec!["A".to_string()]);
+        check_coverage(&cover, &sets, &make_universe(&sets));
     }
 
     #[test]
@@ -234,27 +176,9 @@ mod tests {
         sets.insert(2, vec![]);
         sets.insert(3, vec![3, 4, 5]);
 
-        let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
-        let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
-        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
-        let universe = make_universe(&sets);
-
-        fn check_coverage(cover: &[i32], sets: &HashMap<i32, Vec<i32>>, universe: &HashSet<i32>) {
-            let covered_sets: HashMap<i32, Vec<i32>> = cover
-                .iter()
-                .map(|&key| (key, sets.get(&key).unwrap().clone()))
-                .collect();
-            let covered_universe = make_universe(&covered_sets);
-            assert_eq!(universe, &covered_universe);
-        }
-
-        assert_eq!(set_cover_0, vec![1, 3]);
-        assert_eq!(set_cover_1, vec![1, 3]);
-        assert_eq!(set_cover_2, vec![1, 3]);
-
-        check_coverage(&set_cover_0, &sets, &universe);
-        check_coverage(&set_cover_1, &sets, &universe);
-        check_coverage(&set_cover_2, &sets, &universe);
+        let cover = greedy_set_cover(&sets);
+        assert_eq!(cover, vec![1, 3]);
+        check_coverage(&cover, &sets, &make_universe(&sets));
     }
 
     #[test]
@@ -264,28 +188,9 @@ mod tests {
         sets.insert(2, vec![2]);
         sets.insert(3, vec![3]);
 
-        let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
-        let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
-        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
-
-        assert_eq!(sets.len(), set_cover_0.len());
-        assert_eq!(sets.len(), set_cover_1.len());
-        assert_eq!(sets.len(), set_cover_2.len());
-
-        let universe = make_universe(&sets);
-
-        fn check_coverage(cover: &[i32], sets: &HashMap<i32, Vec<i32>>, universe: &HashSet<i32>) {
-            let covered_sets: HashMap<i32, Vec<i32>> = cover
-                .iter()
-                .map(|&key| (key, sets.get(&key).unwrap().clone()))
-                .collect();
-            let covered_universe = make_universe(&covered_sets);
-            assert_eq!(universe, &covered_universe);
-        }
-
-        check_coverage(&set_cover_0, &sets, &universe);
-        check_coverage(&set_cover_1, &sets, &universe);
-        check_coverage(&set_cover_2, &sets, &universe);
+        let cover = greedy_set_cover(&sets);
+        assert_eq!(cover.len(), sets.len());
+        check_coverage(&cover, &sets, &make_universe(&sets));
     }
 
     #[test]
@@ -295,31 +200,9 @@ mod tests {
         sets.insert(2, vec![1, 2]);
         sets.insert(3, vec![3, 4]);
 
-        let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
-        let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
-        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
-
-        assert_eq!(set_cover_0.len(), 1);
-        assert_eq!(set_cover_1.len(), 1);
-        assert_eq!(set_cover_2.len(), 1);
-        assert_eq!(set_cover_0, vec![1]);
-        assert_eq!(set_cover_1, vec![1]);
-        assert_eq!(set_cover_2, vec![1]);
-
-        let universe = make_universe(&sets);
-
-        fn check_coverage(cover: &[i32], sets: &HashMap<i32, Vec<i32>>, universe: &HashSet<i32>) {
-            let covered_sets: HashMap<i32, Vec<i32>> = cover
-                .iter()
-                .map(|&key| (key, sets.get(&key).unwrap().clone()))
-                .collect();
-            let covered_universe = make_universe(&covered_sets);
-            assert_eq!(universe, &covered_universe);
-        }
-
-        check_coverage(&set_cover_0, &sets, &universe);
-        check_coverage(&set_cover_1, &sets, &universe);
-        check_coverage(&set_cover_2, &sets, &universe);
+        let cover = greedy_set_cover(&sets);
+        assert_eq!(cover, vec![1]);
+        check_coverage(&cover, &sets, &make_universe(&sets));
     }
 
     #[test]
@@ -329,60 +212,23 @@ mod tests {
         sets.insert(2, vec![3, 4, 5]);
         sets.insert(3, vec![5, 6, 7]);
 
-        let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
-        let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
-        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
-
-        assert_eq!(set_cover_0.len(), 3);
-        assert_eq!(set_cover_1.len(), 3);
-        assert_eq!(set_cover_2.len(), 3);
-
-        let universe = make_universe(&sets);
-
-        fn check_coverage(cover: &[i32], sets: &HashMap<i32, Vec<i32>>, universe: &HashSet<i32>) {
-            let covered_sets: HashMap<i32, Vec<i32>> = cover
-                .iter()
-                .map(|&key| (key, sets.get(&key).unwrap().clone()))
-                .collect();
-            let covered_universe = make_universe(&covered_sets);
-            assert_eq!(universe, &covered_universe);
-        }
-
-        check_coverage(&set_cover_0, &sets, &universe);
-        check_coverage(&set_cover_1, &sets, &universe);
-        check_coverage(&set_cover_2, &sets, &universe);
+        let cover = greedy_set_cover(&sets);
+        assert_eq!(cover.len(), 3);
+        check_coverage(&cover, &sets, &make_universe(&sets));
     }
 
     #[test]
     fn test_complex_deterministic_cases() {
         let mut sets = HashMap::new();
-        sets.insert(1, vec![1, 2, 3, 4, 5, 6]); // S1 (Best initial choice)
+        sets.insert(1, vec![1, 2, 3, 4, 5, 6]); // best initial choice
         sets.insert(2, vec![1, 2, 7]);
         sets.insert(3, vec![3, 4, 8]);
         sets.insert(4, vec![5, 6, 9]);
-        sets.insert(5, vec![7, 8, 9, 10]); // S5 (Best second choice to cover 7,8,9,10)
+        sets.insert(5, vec![7, 8, 9, 10]); // best second choice
 
-        let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
-        let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
-        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
-
-        assert_eq!(set_cover_0, vec![1, 5]);
-        assert_eq!(set_cover_1, vec![1, 5]);
-        assert_eq!(set_cover_2, vec![1, 5]);
-
-        let universe = make_universe(&sets);
-        fn check_coverage(cover: &[i32], sets: &HashMap<i32, Vec<i32>>, universe: &HashSet<i32>) {
-            let covered_sets: HashMap<i32, Vec<i32>> = cover
-                .iter()
-                .map(|&key| (key, sets.get(&key).unwrap().clone()))
-                .collect();
-            let covered_universe = make_universe(&covered_sets);
-            assert_eq!(universe, &covered_universe);
-        }
-
-        check_coverage(&set_cover_0, &sets, &universe);
-        check_coverage(&set_cover_1, &sets, &universe);
-        check_coverage(&set_cover_2, &sets, &universe);
+        let cover = greedy_set_cover(&sets);
+        assert_eq!(cover, vec![1, 5]);
+        check_coverage(&cover, &sets, &make_universe(&sets));
     }
 
     #[test]
@@ -393,27 +239,31 @@ mod tests {
         sets.insert(2, vec![7, 8, 9]);
         sets.insert(4, vec![10, 11, 12]);
 
-        let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
-        let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
-        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
+        let cover = greedy_set_cover(&sets);
+        assert_eq!(cover, vec![1, 2, 3, 4]);
+        assert!(cover.windows(2).all(|w| w[0] <= w[1]), "output not sorted");
+    }
 
-        let expected = vec![1, 2, 3, 4];
-        assert_eq!(set_cover_0, expected);
-        assert_eq!(set_cover_1, expected);
-        assert_eq!(set_cover_2, expected);
+    #[test]
+    fn test_two_sets_with_same_elements() {
+        let mut sets = HashMap::new();
+        sets.insert(1, vec![1]);
+        sets.insert(2, vec![2]);
 
-        assert!(
-            set_cover_0.windows(2).all(|w| w[0] <= w[1]),
-            "Output from greedy-standard is not sorted"
-        );
-        assert!(
-            set_cover_1.windows(2).all(|w| w[0] <= w[1]),
-            "Output from greedy-bitvec is not sorted"
-        );
-        assert!(
-            set_cover_2.windows(2).all(|w| w[0] <= w[1]),
-            "Output from greedy-textbook is not sorted"
-        );
+        assert_eq!(greedy_set_cover(&sets).len(), 2);
+    }
+
+    #[test]
+    fn test_ties_break_on_key_order_not_debug_string() {
+        // Every set has size 1, so every comparison is a tie. Debug-string
+        // ordering would rank 10 before 9; Ord must not.
+        let mut sets = HashMap::new();
+        for k in [9, 10, 100] {
+            sets.insert(k, vec![k]);
+        }
+
+        let cover = greedy_set_cover(&sets);
+        assert_eq!(cover, vec![9, 10, 100]);
     }
 
     #[test]
@@ -426,12 +276,11 @@ mod tests {
             vec![40, 50],     // C
         ];
 
-        for algo in ["dense", "bitset", "textbook"] {
-            let picks = greedy_set_cover_generic(&sets, algo).unwrap();
-            assert_eq!(picks[0], Pick { set: 1, n_new: 3 }, "algo {algo}");
-            assert_eq!(picks[1], Pick { set: 2, n_new: 2 }, "algo {algo}");
-            assert_eq!(picks.len(), 2, "algo {algo}");
-        }
+        let picks = greedy_set_cover_dense_generic(&sets).unwrap();
+        assert_eq!(picks[0], Pick { set: 1, n_new: 3 });
+        assert_eq!(picks[1], Pick { set: 2, n_new: 2 });
+        assert_eq!(picks.len(), 2);
+        assert_matches_oracle(&sets);
     }
 
     #[test]
@@ -439,11 +288,10 @@ mod tests {
         let sets = vec![vec![1, 2, 3], vec![3, 4, 5], vec![5, 6, 7]];
         let universe: HashSet<i32> = sets.iter().flatten().cloned().collect();
 
-        for algo in ["dense", "bitset", "textbook"] {
-            let picks = greedy_set_cover_generic(&sets, algo).unwrap();
-            let total: usize = picks.iter().map(|p| p.n_new).sum();
-            assert_eq!(total, universe.len(), "algo {algo}");
-        }
+        let picks = greedy_set_cover_dense_generic(&sets).unwrap();
+        let total: usize = picks.iter().map(|p| p.n_new).sum();
+        assert_eq!(total, universe.len());
+        assert_matches_oracle(&sets);
     }
 
     #[test]
@@ -451,25 +299,30 @@ mod tests {
         // The selection scan counts the repeated 1 three times; n_new must not.
         let sets = vec![vec![1, 1, 1, 2], vec![3]];
 
-        for algo in ["dense", "bitset", "textbook"] {
-            let picks = greedy_set_cover_generic(&sets, algo).unwrap();
-            let dup_set = picks.iter().find(|p| p.set == 0).unwrap();
-            assert_eq!(dup_set.n_new, 2, "algo {algo}");
-        }
+        let picks = greedy_set_cover_dense_generic(&sets).unwrap();
+        let dup_set = picks.iter().find(|p| p.set == 0).unwrap();
+        assert_eq!(dup_set.n_new, 2);
+        assert_matches_oracle(&sets);
     }
 
     #[test]
-    fn test_two_sets_with_same_elements() {
-        let mut sets = HashMap::new();
-        sets.insert(1, vec![1]);
-        sets.insert(2, vec![2]);
+    fn test_dense_matches_oracle_on_assorted_shapes() {
+        let cases: Vec<Vec<Vec<i32>>> = vec![
+            vec![vec![1, 2, 3], vec![1, 2], vec![2]],
+            vec![vec![1, 2, 3], vec![], vec![3, 4, 5]],
+            vec![vec![1], vec![2], vec![3]],
+            vec![vec![1, 2, 3, 4, 5], vec![1, 2], vec![3, 4]],
+            vec![
+                vec![1, 2, 3, 4, 5, 6],
+                vec![1, 2, 7],
+                vec![3, 4, 8],
+                vec![7, 8, 9, 10],
+            ],
+            vec![vec![5, 5, 5], vec![5, 6], vec![7]],
+        ];
 
-        let set_cover_0 = greedy_set_cover(&sets, "greedy-standard".to_string());
-        let set_cover_1 = greedy_set_cover(&sets, "greedy-bitvec".to_string());
-        let set_cover_2 = greedy_set_cover(&sets, "greedy-textbook".to_string());
-
-        assert_eq!(set_cover_0.len(), 2);
-        assert_eq!(set_cover_1.len(), 2);
-        assert_eq!(set_cover_2.len(), 2);
+        for sets in &cases {
+            assert_matches_oracle(sets);
+        }
     }
 }
