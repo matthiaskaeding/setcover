@@ -8,6 +8,9 @@
   first two columns, and ignores any other columns.
 * `setcover()` is now quiet by default; pass `verbose = TRUE` for the solver's
   coverage progress.
+* `greedySetCover()` gained a `verbose` argument. It defaults to `TRUE`, so
+  existing behaviour is unchanged; pass `FALSE` to silence the coverage
+  progress it previously always printed.
 
 # RcppGreedySetCover 0.1.0
 

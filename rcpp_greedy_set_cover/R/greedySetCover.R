@@ -3,8 +3,11 @@
 #' Fast greedy set cover algorithm.
 
 #' @param X Two-column data.frame in long format: Column 1 identifies the sets, column 2 the elements.
-#' @param data.table If \code{TRUE} returns a \code{data.table} with keys given by sets and elements. 
-#' If FALSE returns a \code{data.frame}, sorted by sets and elements. 
+#' @param data.table If \code{TRUE} returns a \code{data.table} with keys given by sets and elements.
+#' If FALSE returns a \code{data.frame}, sorted by sets and elements.
+#' @param verbose If \code{TRUE} (the default) prints the solver's coverage
+#' progress. Defaults to \code{TRUE} so existing behaviour is unchanged; pass
+#' \code{FALSE} to silence it.
 #' @keywords greedy set cover
 #' @return If \code{data.table == TRUE} a \code{data.table}, keyed by sets and elements. 
 #' Else a \code{data.frame}, sorted by sets and elements. 
@@ -29,8 +32,8 @@
 #' identical(sort(unique(res$element)),sort(unique(X$element)))
 
 
-greedySetCover <- function(X,data.table=TRUE) {
-  
+greedySetCover <- function(X,data.table=TRUE,verbose=TRUE) {
+
   stopifnot(ncol(X)==2L)
   # Input: Two column dataframe. First column represents the sets,
   # Second column represents the elements in the sets.
@@ -53,9 +56,17 @@ greedySetCover <- function(X,data.table=TRUE) {
   Group_size_i0 <- X[,eval(parse(text=ex_text0)),keyby="i0"]
   Group_size_i1 <- X[,eval(parse(text=ex_text1)),keyby="i1"]
   
-  Res_set_cover <- greedy_set_cover2(
-    X[["i0"]],X[["i1"]],Group_size_i0[["N"]],Group_size_i1[["N"]]
-  )
+  solve_ <- function() {
+    greedy_set_cover2(
+      X[["i0"]],X[["i1"]],Group_size_i0[["N"]],Group_size_i1[["N"]]
+    )
+  }
+  # greedy_set_cover2 writes coverage progress to stdout unconditionally.
+  if (verbose) {
+    Res_set_cover <- solve_()
+  } else {
+    utils::capture.output(Res_set_cover <- solve_())
+  }
   
   # Recover original cols.
   # Index using i0 / i1 + offset to translate
