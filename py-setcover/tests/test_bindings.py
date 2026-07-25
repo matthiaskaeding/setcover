@@ -156,6 +156,46 @@ def test_set_cover_with_mapping_only_sets_returns_labels():
     assert res == ["A", "C"]
 
 
+def test_empty_dataframe_returns_empty_result():
+    # An empty frame has no max element_int: pandas gives NaN, Polars gives
+    # None, and both used to reach the binding and raise TypeError.
+    for empty in (pd.DataFrame({"s": [], "e": []}), pl.DataFrame({"s": [], "e": []})):
+        result = setcover(empty, "s", "e")
+        assert result.shape[0] == 0
+        assert list(result.columns) == ["set", "step", "n_new", "n_cum"]
+
+
+def test_all_null_rows_are_treated_as_empty():
+    df = pd.DataFrame({"s": [None, None], "e": [None, None]})
+    result = setcover(df, "s", "e")
+
+    assert result.shape[0] == 0
+    assert list(result.columns) == ["set", "step", "n_new", "n_cum"]
+
+
+def test_empty_dataframe_only_sets_returns_empty_series():
+    result = setcover(pd.DataFrame({"s": [], "e": []}), "s", "e", only_sets=True)
+
+    assert isinstance(result, pd.Series)
+    assert _series_to_list(result) == []
+
+
+def test_empty_mapping_returns_no_picks():
+    assert setcover({}) == []
+    assert setcover({}, only_sets=True) == []
+
+
+def test_mapping_of_only_empty_sets_returns_no_picks():
+    assert setcover({"A": [], "B": []}) == []
+
+
+def test_mapping_skips_empty_sets():
+    res = setcover({"A": [], "B": [1]})
+
+    assert [s.set for s in res] == ["B"]
+    assert res[0].n_new == 1
+
+
 def test_mapping_and_dataframe_paths_agree():
     sets = {"A": [10, 20], "B": [10, 20, 30], "C": [40, 50]}
     rows = [(label, el) for label, els in sets.items() for el in els]
