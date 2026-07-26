@@ -10,7 +10,7 @@ dataset with a fixed seed, then times the solve only — CSV loading is excluded
 
 Times are seconds, lower is better.
 
-| n_sets  | universe | rows | seed | `setcover(pairs=True)` | `greedySetCover` 0.1.1 | ratio |
+| n_sets  | universe | rows | seed | `setcover(output="pairs")` | `greedySetCover` 0.1.1 | ratio |
 | ------- | -------- | ---- | ---- | ---------------------- | ---------------------- | ----- |
 | 150,000 | 2,000    | 12M  | 111  | 7.9                    | 35.2                   | 4.5×  |
 | 40,000  | 8,000    | 9M   | 222  | 4.3                    | 20.4                   | 4.7×  |

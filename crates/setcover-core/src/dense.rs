@@ -1,13 +1,24 @@
 use crate::Pick;
 
+/// Outcome of a greedy run.
+pub(crate) struct Run {
+    pub picks: Vec<Pick>,
+    /// Elements still uncovered when greedy ran out of useful sets.
+    pub remaining: usize,
+    /// `owner[e]` is the index into `sets` of the pick that first covered `e`,
+    /// or `usize::MAX` if `e` was never covered. Only present when requested,
+    /// since it costs a `usize` per element rather than the scan's `bool`.
+    pub owner: Option<Vec<usize>>,
+}
+
 /// Run greedy until no unused set covers anything new.
 ///
-/// Returns the picks in selection order and how many elements were left
-/// uncovered. A non-zero remainder means the sets do not span the universe;
-/// whether that is an error depends on where `universe_size` came from, which
-/// is the caller's business.
-pub(crate) fn greedy_picks(universe_size: usize, sets: &[Vec<usize>]) -> (Vec<Pick>, usize) {
+/// A non-zero `remaining` means the sets do not span the universe; whether
+/// that is an error depends on where `universe_size` came from, which is the
+/// caller's business.
+pub(crate) fn greedy_picks(universe_size: usize, sets: &[Vec<usize>], track_owner: bool) -> Run {
     let mut uncovered = vec![true; universe_size];
+    let mut owner = track_owner.then(|| vec![usize::MAX; universe_size]);
     let mut remaining = universe_size;
     let mut chosen_sets = Vec::new();
     let mut used = vec![false; sets.len()];
@@ -46,6 +57,9 @@ pub(crate) fn greedy_picks(universe_size: usize, sets: &[Vec<usize>]) -> (Vec<Pi
         for &e in &sets[idx] {
             if e < universe_size && uncovered[e] {
                 uncovered[e] = false;
+                if let Some(owner) = owner.as_mut() {
+                    owner[e] = idx;
+                }
                 remaining -= 1;
                 n_new += 1;
                 if remaining == 0 {
@@ -57,7 +71,11 @@ pub(crate) fn greedy_picks(universe_size: usize, sets: &[Vec<usize>]) -> (Vec<Pi
         chosen_sets.push(Pick { set: idx, n_new });
     }
 
-    (chosen_sets, remaining)
+    Run {
+        picks: chosen_sets,
+        remaining,
+        owner,
+    }
 }
 
 /// Greedy set cover on a dense universe {0, 1, ..., universe_size - 1}.
@@ -69,9 +87,28 @@ pub(crate) fn greedy_picks(universe_size: usize, sets: &[Vec<usize>]) -> (Vec<Pi
 /// [`crate::greedy_set_cover_dense_generic`] for the variant that derives it
 /// and therefore cannot fail.
 pub fn greedy_set_cover_dense(universe_size: usize, sets: &[Vec<usize>]) -> Option<Vec<Pick>> {
-    let (picks, remaining) = greedy_picks(universe_size, sets);
-    if remaining == 0 {
-        Some(picks)
+    let run = greedy_picks(universe_size, sets, false);
+    if run.remaining == 0 {
+        Some(run.picks)
+    } else {
+        None
+    }
+}
+
+/// As [`greedy_set_cover_dense`], plus the element-to-set assignment.
+///
+/// The second element of the pair is indexed by element: `owner[e]` is the
+/// index into `sets` of the chosen set that first covered `e`. Every element
+/// appears exactly once, which is what makes it a partition of the universe
+/// rather than a join — an element covered by several chosen sets is
+/// attributed only to the one that reached it first.
+pub fn greedy_set_cover_dense_with_owner(
+    universe_size: usize,
+    sets: &[Vec<usize>],
+) -> Option<(Vec<Pick>, Vec<usize>)> {
+    let run = greedy_picks(universe_size, sets, true);
+    if run.remaining == 0 {
+        Some((run.picks, run.owner.expect("requested above")))
     } else {
         None
     }
@@ -91,6 +128,29 @@ mod tests {
     fn empty_universe_is_trivially_covered() {
         assert_eq!(greedy_set_cover_dense(0, &[]), Some(Vec::new()));
         assert_eq!(greedy_set_cover_dense(0, &[vec![]]), Some(Vec::new()));
+    }
+
+    #[test]
+    fn owner_attributes_each_element_to_the_pick_that_reached_it_first() {
+        // Set 0 is picked first (3 new), so it owns 0,1,2 even though set 1
+        // also contains 2. Set 1 then owns only 3.
+        let (picks, owner) =
+            greedy_set_cover_dense_with_owner(4, &[vec![0, 1, 2], vec![2, 3]]).unwrap();
+
+        assert_eq!(picks[0].set, 0);
+        assert_eq!(owner, vec![0, 0, 0, 1]);
+        // Every element attributed exactly once, so the counts match the gains.
+        for pick in &picks {
+            assert_eq!(owner.iter().filter(|&&o| o == pick.set).count(), pick.n_new);
+        }
+    }
+
+    #[test]
+    fn owner_is_absent_when_no_cover_exists() {
+        assert_eq!(
+            greedy_set_cover_dense_with_owner(3, &[vec![0], vec![1]]),
+            None
+        );
     }
 
     #[test]

@@ -14,15 +14,26 @@ uv run scripts/benchmark/make_data.py \
 uv run scripts/benchmark/time_py.py --data-csv scripts/benchmark/data.csv
 ```
 
-3. Time the Rcpp implementation. The second argument picks which entry point to
-   time — `setcover` (one row per chosen set, the like-for-like comparison
-   against Python) or `pairs` for `greedySetCover()`. Run them separately:
-   sharing one process gives the second a warm cache.
+3. Time the Rcpp implementation. Install the CRAN release first — that is the
+   documented baseline:
+
+```r
+install.packages("RcppGreedySetCover")
+```
 
 ```bash
-Rscript scripts/benchmark/time_r.r scripts/benchmark/data.csv setcover
 Rscript scripts/benchmark/time_r.r scripts/benchmark/data.csv pairs
 ```
+
+   `pairs` times `greedySetCover()`, the only function the CRAN release
+   exports. The script prints the package version it loaded, so the output
+   records what was actually measured.
+
+   `setcover` times this repo's newer entry point instead, which returns one
+   row per chosen set and so is closer to a like-for-like comparison — but it
+   does not exist in the released package, and the script errors if you ask
+   for it against a version that lacks it. Run one function per process:
+   sharing one gives the second a warm cache.
 
 `make bench` automates all of this (`prep-bench`, `pytime`, `rtime`, then
 cleanup) so you can compare outputs side by side after a single command, and
