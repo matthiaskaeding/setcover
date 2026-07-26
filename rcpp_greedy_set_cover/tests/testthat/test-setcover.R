@@ -72,6 +72,20 @@ test_that("setcover is quiet unless asked", {
   expect_output(setcover(df, verbose = TRUE), "covered")
 })
 
+test_that("the documented migration reproduces the pre-0.2.0 return value", {
+  # NEWS and ?setcover both tell upgraders to use sort(setcover(X)$set).
+  df <- data.frame(
+    set = c("A", "A", "B", "B", "B", "C", "C"),
+    element = c(10L, 20L, 10L, 20L, 30L, 40L, 50L),
+    stringsAsFactors = FALSE
+  )
+
+  old_style <- sort(as.character(setcover(df)$set))
+
+  expect_identical(old_style, c("B", "C"))
+  expect_false(is.unsorted(old_style))
+})
+
 test_that("setcover handles an empty input", {
   empty <- data.frame(
     set = character(0),

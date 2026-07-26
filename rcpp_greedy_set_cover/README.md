@@ -59,6 +59,13 @@ setequal(res$element, X$element)
 #> [1] TRUE
 ```
 
+## Breaking change in 0.2.0
+
+`setcover()` used to return the chosen labels as an alphabetically sorted
+vector. It now returns a `data.table` in greedy selection order — see below —
+and is silent unless `verbose = TRUE`. `sort(setcover(X)$set)` reproduces the
+old return value exactly. `greedySetCover()` is unaffected.
+
 ## API summary
 
 - `greedySetCover(X, data.table = TRUE)`
