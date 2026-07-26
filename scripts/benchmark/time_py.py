@@ -50,6 +50,12 @@ def parse_args():
         default=Path("scripts/benchmark/data.csv"),
         help="CSV file containing the long-form dataset.",
     )
+    parser.add_argument(
+        "--mode",
+        choices=["picks", "pairs"],
+        default="pairs",
+        help="Which return shape to time. 'pairs' matches greedySetCover().",
+    )
     return parser.parse_args()
 
 
@@ -61,15 +67,28 @@ def main():
     des_len = 100
     print("-Results python" + "-" * (des_len - len("-Results python")))
 
-    start = time.time()
-    picks = setcover(df, "set", "element")
-    end = time.time()
+    # One mode per process. Timing both in sequence gives the second one warm
+    # caches and understates it -- the same trap the R script avoids.
+    if args.mode == "pairs":
+        # One row per element, the shape greedySetCover() returns, which is the
+        # like-for-like comparison against the R package.
+        start = time.time()
+        result = setcover(df, "set", "element", pairs=True)
+        end = time.time()
 
-    cover = _series_to_list(picks["set"])
+        assert result.height == df["element"].n_unique()
+        cover = _series_to_list(result["set"].unique())
+        print("setcover (pairs, one row per element)")
+    else:
+        start = time.time()
+        result = setcover(df, "set", "element")
+        end = time.time()
+
+        cover = _series_to_list(result["set"])
+        assert result["n_cum"][-1] == df["element"].n_unique()
+        print("setcover (one row per chosen set)")
+
     assert verify_cover(df, cover)
-    assert picks["n_cum"][-1] == df["element"].n_unique()
-
-    print("setcover (dense)")
     print(f"Cover: {len(cover)} sets")
     print(f"Time:  {end - start:.1f} seconds")
 

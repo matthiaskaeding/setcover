@@ -91,8 +91,10 @@ bench_alot:
 	@$(MAKE) bench N_SETS=40000 N_ELEMENTS=8000 N_ROWS=9000000 SEED=222
 	@$(MAKE) bench N_SETS=80000 N_ELEMENTS=4000 N_ROWS=10000000 SEED=333
 
+# Separate processes so neither mode benefits from the other's warm cache.
 pytime: pyinstall-rel
-	uv run scripts/benchmark/time_py.py --data-csv scripts/benchmark/data.csv
+	uv run scripts/benchmark/time_py.py --data-csv scripts/benchmark/data.csv --mode pairs
+	uv run scripts/benchmark/time_py.py --data-csv scripts/benchmark/data.csv --mode picks
 
 # greedySetCover() is the published baseline -- the only function CRAN 0.1.0
 # exports. Install that release to reproduce the documented numbers:

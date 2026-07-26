@@ -66,6 +66,26 @@ setcover(df, "set", "element", only_sets=True)
 # 1    C
 ```
 
+## Expanding the cover
+
+`pairs=True` returns one row per element instead — the cover joined back to the
+elements it covers, matching what `RcppGreedySetCover`'s `greedySetCover()`
+returns:
+
+```python
+setcover(df, "set", "element", pairs=True)
+#   set  element
+# 0   B       10
+# 1   B       20
+# 2   B       30
+# 3   C       40
+# 4   C       50
+```
+
+Each element appears exactly once, attributed to whichever chosen set reached
+it first — a partition of the universe, not a join. Rows stay in selection
+order, so the first set's elements come first.
+
 ## Mapping input (labels → elements)
 
 `setcover` can also solve directly from a mapping of set labels to their

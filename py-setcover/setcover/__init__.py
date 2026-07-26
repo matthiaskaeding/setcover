@@ -5,7 +5,10 @@ from typing import Any, NamedTuple
 import narwhals as nw
 from narwhals.typing import IntoFrame
 
-from setcover._setcover_lib import greedy_set_cover_dense_py
+from setcover._setcover_lib import (
+    greedy_set_cover_dense_py,
+    greedy_set_cover_dense_with_owner_py,
+)
 
 
 class Step(NamedTuple):
@@ -20,6 +23,9 @@ class Step(NamedTuple):
 def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame:
     """
     Map arbitrary set/element identifiers to contiguous integer IDs.
+
+    Returns the original labels alongside their ids — `set`, `set_int`,
+    `element`, `element_int` — so callers can map results back.
 
     The mapping is generated via dense ranking so that each unique value maps to
     a stable integer in the range [0, n-1].
@@ -42,6 +48,7 @@ def map_to_ints(df_native: IntoFrame, set_col: str, el_col: str) -> nw.DataFrame
         .select(
             sets.alias("set"),
             _dense_rank_expr(sets).alias("set_int"),
+            elements.alias("element"),
             _dense_rank_expr(elements).alias("element_int"),
         )
     )
@@ -52,6 +59,7 @@ def setcover(
     set_col: str | None = None,
     el_col: str | None = None,
     only_sets: bool = False,
+    pairs: bool = False,
 ):
     """
     Greedy set cover solver.
@@ -69,7 +77,16 @@ def setcover(
 
     With `only_sets=True` you get just the chosen labels, still in selection
     order: a native Series for the DataFrame path, a list for the mapping path.
+
+    With `pairs=True` you get the cover expanded to one row per element —
+    columns `set` and `element` — matching what `RcppGreedySetCover`'s
+    `greedySetCover()` returns. Each element appears exactly once, attributed
+    to whichever chosen set reached it first, so it is a partition of the
+    universe rather than a join.
     """
+    if only_sets and pairs:
+        raise ValueError("only_sets and pairs are mutually exclusive")
+
     # DataFrame path
     if set_col is not None and el_col is not None:
         df = map_to_ints(data, set_col, el_col).sort("set_int", "element_int")
@@ -95,11 +112,36 @@ def setcover(
             universe_size = int(df.get_column("element_int").max()) + 1
         else:
             universe_size = 0
-        picks = greedy_set_cover_dense_py(universe_size, sets)
+        if pairs:
+            picks, owner = greedy_set_cover_dense_with_owner_py(universe_size, sets)
+        else:
+            picks = greedy_set_cover_dense_py(universe_size, sets)
 
         # dfl is sorted by set_int, and set_int is a dense rank, so row i of dfl
         # is the set the solver saw at index i.
         labels = dfl.get_column("set").to_list()
+
+        if pairs:
+            # element_int is a dense rank, so sorting by it lines the labels up
+            # with owner, which the solver indexed by element.
+            el_labels = (
+                df.unique(["element_int"])
+                .sort("element_int")
+                .get_column("element")
+                .to_list()
+            )
+            step_of_set = {set_idx: step for step, (set_idx, _) in enumerate(picks)}
+            order = sorted(
+                range(universe_size), key=lambda e: (step_of_set[owner[e]], e)
+            )
+            return nw.DataFrame.from_dict(
+                {
+                    "set": [labels[owner[e]] for e in order],
+                    "element": [el_labels[e] for e in order],
+                },
+                backend=df.implementation,
+            ).to_native()
+
         n_new = [gain for _, gain in picks]
         solution = nw.DataFrame.from_dict(
             {
@@ -137,6 +179,14 @@ def setcover(
         sets_int.append(deduped)
 
     universe_size = len(elem_to_id)
+
+    if pairs:
+        picks, owner = greedy_set_cover_dense_with_owner_py(universe_size, sets_int)
+        el_labels = list(elem_to_id)  # insertion order matches the assigned ids
+        step_of_set = {set_idx: step for step, (set_idx, _) in enumerate(picks)}
+        order = sorted(range(universe_size), key=lambda e: (step_of_set[owner[e]], e))
+        return [(labels[owner[e]], el_labels[e]) for e in order]
+
     picks = greedy_set_cover_dense_py(universe_size, sets_int)
     if only_sets:
         return [labels[idx] for idx, _ in picks]

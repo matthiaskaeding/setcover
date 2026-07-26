@@ -1,7 +1,7 @@
 mod dense;
 mod mapping;
 
-pub use dense::greedy_set_cover_dense;
+pub use dense::{greedy_set_cover_dense, greedy_set_cover_dense_with_owner};
 pub use mapping::compress_universe;
 
 use std::collections::HashMap;
@@ -71,13 +71,13 @@ where
 pub fn greedy_set_cover_dense_generic<T: Eq + Hash + Clone>(sets: &[Vec<T>]) -> Vec<Pick> {
     let (dense_sets, universe) = mapping::compress_universe(sets);
 
-    let (picks, remaining) = dense::greedy_picks(universe.len(), &dense_sets);
+    let run = dense::greedy_picks(universe.len(), &dense_sets, false);
     debug_assert_eq!(
-        remaining, 0,
+        run.remaining, 0,
         "a universe derived from the input sets is always fully covered"
     );
 
-    picks
+    run.picks
 }
 
 #[cfg(test)]
