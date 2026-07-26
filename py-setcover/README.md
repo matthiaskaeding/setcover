@@ -15,11 +15,8 @@ required. For local development inside this repository, `make pyinstall` runs
 
 ## DataFrame-first API
 
-The public entrypoints live in `setcover/__init__.py` and use
-[Narwhals](https://narwhals.dev/) to accept either pandas or Polars frames.
-Install whichever backend you prefer (or both) and pass a table where one
-column identifies the set name and another column contains the elements that it
-covers:
+Accepts either pandas or Polars frames.
+Pass a table where one column identifies the set name and another identifies the covered elements:
 
 ```python
 import pandas as pd
@@ -38,10 +35,8 @@ setcover(df, "set", "element")
 # 1   C     1      2      5
 ```
 
-Results come back **in greedy selection order**, highest-gain set first. That
-ordering is the point: greedy set cover builds its answer as a sequence, so any
-prefix is itself a good partial cover. The first `k` rows are the `k` sets that
-cover the most.
+Results come back **in greedy selection order**, highest-gain set first.
+The first `k` rows are the `k` sets that cover the most.
 
 | column  | meaning                                          |
 | ------- | ------------------------------------------------ |
@@ -50,8 +45,7 @@ cover the most.
 | `n_new` | elements this pick was the first to cover        |
 | `n_cum` | running total, reaching the universe size at the end |
 
-`n_new` is the marginal gain, which is where you look to decide where to
-truncate — once it flattens, further sets are buying you little.
+`n_new` is the marginal gain.
 
 The return type mirrors the backend you passed in (pandas `DataFrame` above,
 Polars `DataFrame` if you provide a `pl.DataFrame`). Missing values and
