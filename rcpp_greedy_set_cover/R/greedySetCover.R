@@ -34,6 +34,9 @@
 
 greedySetCover <- function(X,data.table=TRUE,verbose=TRUE) {
 
+  if (!is.data.frame(X)) {
+    stop("X must be a data.frame or data.table, not ", class(X)[1L], call. = FALSE)
+  }
   stopifnot(ncol(X)==2L)
   # Input: Two column dataframe. First column represents the sets,
   # Second column represents the elements in the sets.

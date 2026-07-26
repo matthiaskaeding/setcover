@@ -1,3 +1,29 @@
+# Resolve a column given by name or position to a column name, with errors
+# that say which argument was wrong and what was available.
+resolve_column <- function(X, col, arg) {
+  if (length(col) != 1L || is.na(col)) {
+    stop(arg, " must be a single column name or position", call. = FALSE)
+  }
+  if (is.character(col)) {
+    if (!col %in% names(X)) {
+      stop(
+        arg, " = \"", col, "\" is not a column of X; available: ",
+        paste(names(X), collapse = ", "),
+        call. = FALSE
+      )
+    }
+    return(col)
+  }
+  col <- as.integer(col)
+  if (is.na(col) || col < 1L || col > ncol(X)) {
+    stop(
+      arg, " = ", col, " is out of range; X has ", ncol(X), " columns",
+      call. = FALSE
+    )
+  }
+  names(X)[[col]]
+}
+
 #' Set cover
 #'
 #' Greedy set cover on a long-form input. Results come back in greedy selection
@@ -26,15 +52,23 @@
 #' df <- data.frame(set = c("A", "A", "B", "C"), element = c(1L, 2L, 2L, 3L))
 #' setcover(df)
 setcover <- function(X, set_col = 1L, el_col = 2L, verbose = FALSE) {
-  X <- data.table::setDT(data.table::copy(X))
+  if (!is.data.frame(X)) {
+    stop("X must be a data.frame or data.table, not ", class(X)[1L], call. = FALSE)
+  }
+  if (ncol(X) < 2L) {
+    stop("X must have at least two columns, but has ", ncol(X), call. = FALSE)
+  }
 
-  n1 <- if (is.character(set_col)) set_col else names(X)[[set_col]]
-  n2 <- if (is.character(el_col)) el_col else names(X)[[el_col]]
-  stopifnot(
-    n1 %in% names(X),
-    n2 %in% names(X),
-    !identical(n1, n2)
-  )
+  n1 <- resolve_column(X, set_col, "set_col")
+  n2 <- resolve_column(X, el_col, "el_col")
+  if (identical(n1, n2)) {
+    stop(
+      "set_col and el_col must name different columns, both are \"", n1, "\"",
+      call. = FALSE
+    )
+  }
+
+  X <- data.table::setDT(data.table::copy(X))
 
   X[, "i0" := .GRP - 1L, by = n1]
   X[, "i1" := .GRP - 1L, by = n2]

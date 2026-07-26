@@ -258,3 +258,53 @@ def test_mapping_and_dataframe_paths_agree():
     assert [s.set for s in from_mapping] == _col(from_frame, "set")
     assert [s.n_new for s in from_mapping] == _col(from_frame, "n_new")
     assert [s.n_cum for s in from_mapping] == _col(from_frame, "n_cum")
+
+
+def test_one_column_name_without_the_other_is_rejected():
+    df = pd.DataFrame({"s": ["A"], "e": [1]})
+
+    with pytest.raises(ValueError, match="set_col was given without el_col"):
+        setcover(df, "s")
+    with pytest.raises(ValueError, match="el_col was given without set_col"):
+        setcover(df, el_col="e")
+
+
+def test_missing_columns_are_named_alongside_what_is_available():
+    df = pd.DataFrame({"s": ["A"], "e": [1]})
+
+    with pytest.raises(ValueError, match=r"\['nope'\] not found"):
+        setcover(df, "nope", "e")
+    with pytest.raises(ValueError, match=r"available columns are \['s', 'e'\]"):
+        setcover(df, "s", "nope")
+
+
+def test_the_same_column_for_sets_and_elements_is_rejected():
+    df = pd.DataFrame({"s": ["A"], "e": [1]})
+
+    with pytest.raises(ValueError, match="must name different columns"):
+        setcover(df, "s", "s")
+
+
+def test_column_names_with_a_mapping_are_rejected():
+    with pytest.raises(TypeError, match="but data is a mapping"):
+        setcover({"A": [1, 2]}, "s", "e")
+
+
+def test_a_dataframe_without_column_names_says_so():
+    df = pd.DataFrame({"s": ["A"], "e": [1]})
+
+    with pytest.raises(TypeError, match="pass set_col and el_col"):
+        setcover(df)
+
+
+def test_a_wholly_wrong_type_is_rejected():
+    with pytest.raises(TypeError, match="got list"):
+        setcover([("A", 1), ("A", 2)])
+
+
+def test_mapping_values_must_be_iterables_of_elements():
+    with pytest.raises(TypeError, match="iterable of elements"):
+        setcover({"A": 1})
+    # A string is iterable but almost never what the caller meant.
+    with pytest.raises(TypeError, match="iterable of elements"):
+        setcover({"A": "abc"})

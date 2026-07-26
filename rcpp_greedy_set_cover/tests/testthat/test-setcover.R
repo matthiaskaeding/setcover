@@ -120,3 +120,46 @@ test_that("setcover tolerates duplicate rows", {
   expect_identical(as.character(res$set), c("B", "C"))
   expect_identical(res$n_new, c(3L, 2L))
 })
+
+test_that("setcover rejects inputs that are not data frames", {
+  expect_error(setcover(list(a = 1)), "must be a data.frame")
+  expect_error(setcover(1:10), "must be a data.frame")
+})
+
+test_that("setcover requires at least two columns", {
+  expect_error(
+    setcover(data.frame(set = c("A", "B"))),
+    "at least two columns"
+  )
+})
+
+test_that("setcover reports unknown column names", {
+  df <- data.frame(set = "A", element = 1L, stringsAsFactors = FALSE)
+
+  expect_error(setcover(df, set_col = "nope"), "not a column of X")
+  expect_error(setcover(df, el_col = "nope"), "not a column of X")
+  # The message lists what was available, so the caller can spot a typo.
+  expect_error(setcover(df, set_col = "nope"), "set, element")
+})
+
+test_that("setcover reports out-of-range column positions", {
+  df <- data.frame(set = "A", element = 1L, stringsAsFactors = FALSE)
+
+  expect_error(setcover(df, el_col = 5L), "out of range")
+  expect_error(setcover(df, set_col = 0L), "out of range")
+})
+
+test_that("setcover rejects column arguments that are not single values", {
+  df <- data.frame(set = "A", element = 1L, stringsAsFactors = FALSE)
+
+  expect_error(setcover(df, set_col = c(1L, 2L)), "single column name or position")
+  expect_error(setcover(df, el_col = NA), "single column name or position")
+})
+
+test_that("setcover rejects the same column for sets and elements", {
+  df <- data.frame(set = "A", element = 1L, stringsAsFactors = FALSE)
+
+  expect_error(setcover(df, set_col = 1L, el_col = 1L), "must name different columns")
+  # Name and position pointing at the same column is the same mistake.
+  expect_error(setcover(df, set_col = "set", el_col = 1L), "must name different columns")
+})

@@ -87,8 +87,37 @@ def setcover(
     if output not in ("sets", "pairs"):
         raise ValueError(f"output must be 'sets' or 'pairs', got {output!r}")
 
+    # Both column names or neither: one alone is always a mistake, and without
+    # this check it falls through to the mapping path and reports the wrong
+    # problem.
+    if (set_col is None) != (el_col is None):
+        given, missing = (
+            ("set_col", "el_col") if el_col is None else ("el_col", "set_col")
+        )
+        raise ValueError(
+            f"{given} was given without {missing}; pass both for a DataFrame, "
+            "or neither for a mapping"
+        )
+
     # DataFrame path
     if set_col is not None and el_col is not None:
+        if isinstance(data, Mapping):
+            raise TypeError(
+                "set_col and el_col are for DataFrame input, but data is a "
+                "mapping; drop them to solve the mapping directly"
+            )
+        if set_col == el_col:
+            raise ValueError(
+                f"set_col and el_col must name different columns, both are {set_col!r}"
+            )
+
+        available = list(nw.from_native(data, eager_only=True).columns)
+        absent = [c for c in (set_col, el_col) if c not in available]
+        if absent:
+            raise ValueError(
+                f"column(s) {absent} not found in data; available columns are {available}"
+            )
+
         df = map_to_ints(data, set_col, el_col).sort("set_int", "element_int")
         dfl = (
             df.group_by("set", "set_int")
@@ -156,8 +185,15 @@ def setcover(
 
     # Mapping path (set_label -> iterable of elements)
     if not isinstance(data, Mapping):
+        # A DataFrame reaching here means the caller forgot the column names.
+        if hasattr(data, "columns"):
+            raise TypeError(
+                "data looks like a DataFrame; pass set_col and el_col to name "
+                "the set and element columns"
+            )
         raise TypeError(
-            "Unsupported input: provide a DataFrame with set_col/el_col or a mapping of set->elements"
+            "data must be a DataFrame with set_col/el_col, or a mapping of "
+            f"set -> elements; got {type(data).__name__}"
         )
 
     elem_to_id: dict[Any, int] = {}
