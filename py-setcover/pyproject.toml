@@ -8,13 +8,13 @@ module-name = "setcover._setcover_lib"
 
 [project]
 name = "setcover"
-version = "0.1.0"
+version = "1.0.0"
 description = "A high-performance set cover algorithm implementation in Rust."
 readme = "README.md"
 authors = [
     { name = "Matthias Kaeding", email = "kaedingmatthias@gmail.com" }
 ]
-license = { text = "MIT" } # Or "Apache-2.0"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Rust",
