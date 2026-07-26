@@ -58,7 +58,7 @@ def setcover(
     data: IntoFrame | Mapping[Any, Iterable[Any]],
     set_col: str | None = None,
     el_col: str | None = None,
-    output: Literal["picks", "sets", "pairs"] = "picks",
+    output: Literal["picks", "labels", "pairs"] = "picks",
 ):
     """
     Greedy set cover solver.
@@ -77,7 +77,7 @@ def setcover(
       pick's marginal gain) and `n_cum` (the running total, which is where you
       look to decide where to truncate). A native DataFrame in the input's
       backend, or a list of `Step` named tuples from a mapping.
-    - `"sets"` — just the chosen labels, still in selection order. A native
+    - `"labels"` — just the chosen labels, still in selection order. A native
       Series, or a list.
     - `"pairs"` — the cover expanded to one row per element, columns `set` and
       `element`, matching what `RcppGreedySetCover`'s `greedySetCover()`
@@ -85,8 +85,8 @@ def setcover(
       chosen set reached it first, so it is a partition of the universe rather
       than a join. A native DataFrame, or a list of tuples.
     """
-    if output not in ("picks", "sets", "pairs"):
-        raise ValueError(f"output must be 'picks', 'sets' or 'pairs', got {output!r}")
+    if output not in ("picks", "labels", "pairs"):
+        raise ValueError(f"output must be 'picks', 'labels' or 'pairs', got {output!r}")
 
     # DataFrame path
     if set_col is not None and el_col is not None:
@@ -153,7 +153,7 @@ def setcover(
             },
             backend=df.implementation,
         )
-        if output == "sets":
+        if output == "labels":
             return solution.get_column("set").to_native()
         return solution.to_native()
 
@@ -189,7 +189,7 @@ def setcover(
         return [(labels[owner[e]], el_labels[e]) for e in order]
 
     picks = greedy_set_cover_dense_py(universe_size, sets_int)
-    if output == "sets":
+    if output == "labels":
         return [labels[idx] for idx, _ in picks]
 
     cumulative = accumulate(gain for _, gain in picks)
