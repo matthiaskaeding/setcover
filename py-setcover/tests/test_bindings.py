@@ -63,14 +63,6 @@ def test_set_cover_polars_dataframe():
     assert _col(result, "n_new") == [2, 1]
 
 
-def test_labels_output_returns_native_series():
-    df = pd.DataFrame({"set_name": ["A", "A", "B", "C"], "element": [1, 2, 2, 3]})
-    result = setcover(df, "set_name", "element", output="labels")
-
-    assert isinstance(result, pd.Series)
-    assert _series_to_list(result) == ["A", "C"]
-
-
 def test_set_cover_returns_greedy_order_not_sorted():
     # B is the best first pick (3 new elements), then C. Sorting alphabetically
     # would put A first, which is exactly the information we want preserved.
@@ -150,12 +142,6 @@ def test_set_cover_with_mapping_returns_steps():
     assert [s.set for s in res[:1]] == ["A"]
 
 
-def test_labels_output_from_a_mapping():
-    sets = {"A": [1, 2], "B": [2], "C": [3]}
-    res = setcover(sets, output="labels")
-    assert res == ["A", "C"]
-
-
 def test_empty_dataframe_returns_empty_result():
     # An empty frame has no max element_int: pandas gives NaN, Polars gives
     # None, and both used to reach the binding and raise TypeError.
@@ -173,16 +159,8 @@ def test_all_null_rows_are_treated_as_empty():
     assert list(result.columns) == ["set", "step", "n_new", "n_cum"]
 
 
-def test_empty_dataframe_labels_output_is_empty_series():
-    result = setcover(pd.DataFrame({"s": [], "e": []}), "s", "e", output="labels")
-
-    assert isinstance(result, pd.Series)
-    assert _series_to_list(result) == []
-
-
 def test_empty_mapping_returns_no_picks():
     assert setcover({}) == []
-    assert setcover({}, output="labels") == []
 
 
 def test_mapping_of_only_empty_sets_returns_no_picks():
@@ -266,7 +244,7 @@ def test_pairs_from_a_mapping():
 
 def test_unknown_output_mode_is_rejected():
     with pytest.raises(ValueError, match="output must be"):
-        setcover({"A": [1]}, output="sets")
+        setcover({"A": [1]}, output="labels")
 
 
 def test_mapping_and_dataframe_paths_agree():

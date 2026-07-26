@@ -58,7 +58,7 @@ def setcover(
     data: IntoFrame | Mapping[Any, Iterable[Any]],
     set_col: str | None = None,
     el_col: str | None = None,
-    output: Literal["picks", "labels", "pairs"] = "picks",
+    output: Literal["sets", "pairs"] = "sets",
 ):
     """
     Greedy set cover solver.
@@ -73,20 +73,19 @@ def setcover(
 
     `output` selects the return shape:
 
-    - `"picks"` (default) — one row per chosen set, with `step`, `n_new` (that
+    - `"sets"` (default) — one row per chosen set, with `step`, `n_new` (that
       pick's marginal gain) and `n_cum` (the running total, which is where you
       look to decide where to truncate). A native DataFrame in the input's
-      backend, or a list of `Step` named tuples from a mapping.
-    - `"labels"` — just the chosen labels, still in selection order. A native
-      Series, or a list.
+      backend, or a list of `Step` named tuples from a mapping. Take the `set`
+      column if you only want the labels.
     - `"pairs"` — the cover expanded to one row per element, columns `set` and
       `element`, matching what `RcppGreedySetCover`'s `greedySetCover()`
       returns. Each element appears exactly once, attributed to whichever
       chosen set reached it first, so it is a partition of the universe rather
       than a join. A native DataFrame, or a list of tuples.
     """
-    if output not in ("picks", "labels", "pairs"):
-        raise ValueError(f"output must be 'picks', 'labels' or 'pairs', got {output!r}")
+    if output not in ("sets", "pairs"):
+        raise ValueError(f"output must be 'sets' or 'pairs', got {output!r}")
 
     # DataFrame path
     if set_col is not None and el_col is not None:
@@ -153,8 +152,6 @@ def setcover(
             },
             backend=df.implementation,
         )
-        if output == "labels":
-            return solution.get_column("set").to_native()
         return solution.to_native()
 
     # Mapping path (set_label -> iterable of elements)
@@ -189,8 +186,6 @@ def setcover(
         return [(labels[owner[e]], el_labels[e]) for e in order]
 
     picks = greedy_set_cover_dense_py(universe_size, sets_int)
-    if output == "labels":
-        return [labels[idx] for idx, _ in picks]
 
     cumulative = accumulate(gain for _, gain in picks)
     return [

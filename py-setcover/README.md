@@ -57,14 +57,7 @@ The return type mirrors the backend you passed in (pandas `DataFrame` above,
 Polars `DataFrame` if you provide a `pl.DataFrame`). Missing values and
 duplicate `(set, element)` pairs are dropped before solving.
 
-If you only want the labels, `output="labels"` returns a native Series, still in
-selection order:
-
-```python
-setcover(df, "set", "element", output="labels")
-# 0    B
-# 1    C
-```
+If you only want the labels, take the `set` column.
 
 ## Expanding the cover
 
@@ -101,7 +94,7 @@ setcover(sets)
 # [Step(set='A', step=0, n_new=2, n_cum=2),
 #  Step(set='C', step=1, n_new=1, n_cum=3)]
 
-setcover(sets, output="labels")
+[s.set for s in setcover(sets)]
 # ['A', 'C']
 ```
 
