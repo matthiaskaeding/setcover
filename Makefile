@@ -94,9 +94,10 @@ bench_alot:
 pytime: pyinstall-rel
 	uv run scripts/benchmark/time_py.py --data-csv scripts/benchmark/data.csv
 
-# Separate processes so neither function benefits from the other's warm cache.
+# greedySetCover() is the published baseline -- the only function CRAN 0.1.0
+# exports. Install that release to reproduce the documented numbers:
+#   install.packages("RcppGreedySetCover")
 rtime:
-	Rscript scripts/benchmark/time_r.r scripts/benchmark/data.csv setcover
 	Rscript scripts/benchmark/time_r.r scripts/benchmark/data.csv pairs
 
 time: pytime rtime
