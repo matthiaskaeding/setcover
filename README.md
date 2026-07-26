@@ -10,4 +10,4 @@ High performance implementation of set-cover algorithms.
 * `py-setcover`: Python bindings for the Rust crates, using Narwhals to stay
   dataframe-agnostic.
 
-Run the benchmarks with `make bench_alot`.
+Benchmarks can be run vis `make bench_alot`.
