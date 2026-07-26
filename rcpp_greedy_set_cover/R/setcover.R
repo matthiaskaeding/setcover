@@ -15,6 +15,12 @@
 #'   \code{set} (the label), \code{step} (selection order, starting at 1),
 #'   \code{n_new} (elements this pick was the first to cover) and \code{n_cum}
 #'   (the running total, reaching the universe size in the final row).
+#' @section Breaking change in 0.2.0:
+#' Before 0.2.0 this function returned the chosen labels as a vector, sorted
+#' alphabetically, and printed the solver's coverage progress. It now returns
+#' the \code{data.table} described above and is silent by default. To restore
+#' the old return value, use \code{sort(setcover(X)$set)}; for the old output,
+#' pass \code{verbose = TRUE}. \code{\link{greedySetCover}} is unaffected.
 #' @export
 #' @examples
 #' df <- data.frame(set = c("A", "A", "B", "C"), element = c(1L, 2L, 2L, 3L))
