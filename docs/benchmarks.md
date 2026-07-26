@@ -30,40 +30,16 @@ These are single runs on a shared 4 vCPU container, not a quiet benchmarking
 machine. Repeat runs moved individual timings by 10–30%. Treat the order of
 magnitude as solid and any given digit as not.
 
-## This is not an apples-to-apples comparison
+## Not an apples-to-apples comparison
 
-Read the ratio as "the published R package takes ~5× as long to do its job",
-not "the Rust solver is 5× faster than the C++ one". Three reasons, all of
-which inflate the ratio:
+The two functions return different things. `greedySetCover()` — the only one
+CRAN 0.1.1 exports — returns a row per *element*, while `py-setcover` returns a
+row per *chosen set*: thousands of rows versus dozens. The R side does more work
+to return more data, so the ratio overstates the difference between the solvers.
 
-**The two functions return different things.** `greedySetCover()` — the only
-function CRAN 0.1.1 exports — returns one row per *element*, an assignment of
-every element to the set that covered it. `py-setcover` returns one row per
-*chosen set*. On these inputs that is thousands of rows versus dozens, so the R
-side is doing strictly more work before it can return.
-
-**The C++ always materializes that assignment.** `greedy_set_cover2`
-preallocates one output row per element and fills every one of them, so the
-cost is structural rather than a formatting step at the end. The Rust path
-never builds it.
-
-**Representation differs.** The C++ maintains a `boost::multi_index` of set
-sizes over `unordered_set` members, so each round chases pointers and hashes
-elements individually. The dense Rust solver scans flat `Vec`s against a `bool`
-array — cache-friendly, though it rescans every candidate each round rather
-than updating incrementally.
-
-None of this is a language effect. Both sides are compiled native code, and
-nothing measured here is faster in Rust than the same approach would be in C++.
-A labels-only entry point in the C++, or a lazy priority queue on either side,
-would move the number more than the choice of language does.
-
-For calibration: a like-for-like comparison against this repository's newer
-`setcover()` entry point, which also returns one row per chosen set, came out
-at **3.7–4.2×** rather than ~5×. That gap between the two figures is the price
-of the different return type. It is not included as a headline because that
-entry point is unreleased, and comparing against unreleased code is exactly the
-kind of claim that goes stale.
+Against this repo's newer `setcover()`, which also returns a row per chosen set,
+it is **3.7–4.2×**. The remaining gap is design rather than language — both
+sides are compiled native code.
 
 ## Tie-breaking
 
