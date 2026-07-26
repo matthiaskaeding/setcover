@@ -15,10 +15,8 @@ required. For local development inside this repository, `make pyinstall` runs
 
 ## DataFrame-first API
 
-The public entrypoints live in `setcover/__init__.py` and use
-[Narwhals](https://narwhals.dev/) to accept either pandas or Polars frames.
-Install whichever backend you prefer (or both) and pass a table where one
-column identifies the set name and another column contains the elements that it
+Accepts either pandas or Polars frames.
+Pass a table where one column identifies the set name and another column contains the elements that it
 covers:
 
 ```python
