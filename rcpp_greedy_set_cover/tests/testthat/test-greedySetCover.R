@@ -50,3 +50,7 @@ test_that("greedySetCover computes a valid cover when several sets are required"
     expect_identical(covered_elements, universe)
     expect_true(length(unique(cover$set)) >= 2)
 })
+
+test_that("greedySetCover rejects inputs that are not data frames", {
+  expect_error(greedySetCover(list(a = 1)), "must be a data.frame")
+})
