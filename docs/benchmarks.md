@@ -28,6 +28,9 @@ These are single runs on a shared 4 vCPU container, not a quiet benchmarking
 machine. Repeat runs moved individual timings by 10–30%. Treat the order of
 magnitude as solid and any given digit as not.
 
+Both sides are compiled native code, so the gap is a design difference rather
+than a language one.
+
 ## Tie-breaking
 
 The two implementations break ties differently. Both answers are valid greedy covers, but they need not be
