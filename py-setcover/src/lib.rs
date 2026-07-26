@@ -17,7 +17,7 @@ fn greedy_set_cover_dense_py(
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn _setcover_lib(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _setcover_lib(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(greedy_set_cover_dense_py, m)?)?;
     Ok(())
 }
