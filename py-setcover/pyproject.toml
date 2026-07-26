@@ -14,7 +14,7 @@ readme = "README.md"
 authors = [
     { name = "Matthias Kaeding", email = "kaedingmatthias@gmail.com" }
 ]
-license = { text = "MIT" } # Or "Apache-2.0"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Rust",
