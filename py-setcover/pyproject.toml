@@ -8,7 +8,7 @@ module-name = "setcover._setcover_lib"
 
 [project]
 name = "setcover"
-version = "1.0.0"
+version = "0.1.0"
 description = "A high-performance set cover algorithm implementation in Rust."
 readme = "README.md"
 authors = [
