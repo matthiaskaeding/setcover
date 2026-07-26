@@ -65,7 +65,7 @@ def test_set_cover_polars_dataframe():
 
 def test_set_cover_only_sets_returns_native_series():
     df = pd.DataFrame({"set_name": ["A", "A", "B", "C"], "element": [1, 2, 2, 3]})
-    result = setcover(df, "set_name", "element", only_sets=True)
+    result = setcover(df, "set_name", "element", output="sets")
 
     assert isinstance(result, pd.Series)
     assert _series_to_list(result) == ["A", "C"]
@@ -152,7 +152,7 @@ def test_set_cover_with_mapping_returns_steps():
 
 def test_set_cover_with_mapping_only_sets_returns_labels():
     sets = {"A": [1, 2], "B": [2], "C": [3]}
-    res = setcover(sets, only_sets=True)
+    res = setcover(sets, output="sets")
     assert res == ["A", "C"]
 
 
@@ -174,7 +174,7 @@ def test_all_null_rows_are_treated_as_empty():
 
 
 def test_empty_dataframe_only_sets_returns_empty_series():
-    result = setcover(pd.DataFrame({"s": [], "e": []}), "s", "e", only_sets=True)
+    result = setcover(pd.DataFrame({"s": [], "e": []}), "s", "e", output="sets")
 
     assert isinstance(result, pd.Series)
     assert _series_to_list(result) == []
@@ -182,7 +182,7 @@ def test_empty_dataframe_only_sets_returns_empty_series():
 
 def test_empty_mapping_returns_no_picks():
     assert setcover({}) == []
-    assert setcover({}, only_sets=True) == []
+    assert setcover({}, output="sets") == []
 
 
 def test_mapping_of_only_empty_sets_returns_no_picks():
@@ -203,7 +203,7 @@ def test_pairs_expands_the_cover_to_one_row_per_element():
             "element": [10, 20, 10, 20, 30, 40, 50],
         }
     )
-    result = setcover(df, "set_name", "element", pairs=True)
+    result = setcover(df, "set_name", "element", output="pairs")
 
     assert list(result.columns) == ["set", "element"]
     assert _col(result, "set") == ["B", "B", "B", "C", "C"]
@@ -219,7 +219,7 @@ def test_pairs_partitions_the_universe():
             "element": [10, 20, 10, 20, 30, 40, 50],
         }
     )
-    result = setcover(df, "set_name", "element", pairs=True)
+    result = setcover(df, "set_name", "element", output="pairs")
     elements = _col(result, "element")
 
     assert sorted(elements) == sorted(df["element"].unique())
@@ -238,7 +238,7 @@ def test_pairs_agrees_with_the_picks_table():
         }
     )
     picks = setcover(df, "set_name", "element")
-    prs = setcover(df, "set_name", "element", pairs=True)
+    prs = setcover(df, "set_name", "element", output="pairs")
 
     # Same sets, same order, and each set owns exactly n_new elements.
     assert _col(prs, "set")[:1] == _col(picks, "set")[:1]
@@ -249,24 +249,24 @@ def test_pairs_agrees_with_the_picks_table():
 
 def test_pairs_on_polars_and_empty_input():
     result = setcover(
-        pl.DataFrame({"s": ["A", "A", "B"], "e": [1, 2, 2]}), "s", "e", pairs=True
+        pl.DataFrame({"s": ["A", "A", "B"], "e": [1, 2, 2]}), "s", "e", output="pairs"
     )
     assert isinstance(result, pl.DataFrame)
     assert _col(result, "set") == ["A", "A"]
 
-    empty = setcover(pd.DataFrame({"s": [], "e": []}), "s", "e", pairs=True)
+    empty = setcover(pd.DataFrame({"s": [], "e": []}), "s", "e", output="pairs")
     assert empty.shape[0] == 0
     assert list(empty.columns) == ["set", "element"]
 
 
 def test_pairs_from_a_mapping():
-    res = setcover({"A": [10, 20], "B": [10, 20, 30], "C": [40, 50]}, pairs=True)
+    res = setcover({"A": [10, 20], "B": [10, 20, 30], "C": [40, 50]}, output="pairs")
     assert res == [("B", 10), ("B", 20), ("B", 30), ("C", 40), ("C", 50)]
 
 
-def test_only_sets_and_pairs_are_mutually_exclusive():
-    with pytest.raises(ValueError, match="mutually exclusive"):
-        setcover({"A": [1]}, only_sets=True, pairs=True)
+def test_unknown_output_mode_is_rejected():
+    with pytest.raises(ValueError, match="output must be"):
+        setcover({"A": [1]}, output="labels")
 
 
 def test_mapping_and_dataframe_paths_agree():

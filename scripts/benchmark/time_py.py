@@ -73,7 +73,7 @@ def main():
         # One row per element, the shape greedySetCover() returns, which is the
         # like-for-like comparison against the R package.
         start = time.time()
-        result = setcover(df, "set", "element", pairs=True)
+        result = setcover(df, "set", "element", output="pairs")
         end = time.time()
 
         assert result.height == df["element"].n_unique()

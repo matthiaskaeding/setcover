@@ -1,6 +1,6 @@
 from collections.abc import Iterable, Mapping
 from itertools import accumulate
-from typing import Any, NamedTuple
+from typing import Any, Literal, NamedTuple
 
 import narwhals as nw
 from narwhals.typing import IntoFrame
@@ -58,34 +58,35 @@ def setcover(
     data: IntoFrame | Mapping[Any, Iterable[Any]],
     set_col: str | None = None,
     el_col: str | None = None,
-    only_sets: bool = False,
-    pairs: bool = False,
+    output: Literal["picks", "sets", "pairs"] = "picks",
 ):
     """
     Greedy set cover solver.
 
+    Accepts either a DataFrame-like (pandas/polars via Narwhals) with `set_col`
+    and `el_col`, or a mapping from set labels to iterables of elements. The
+    mapping path assumes no DataFrame backend is installed.
+
     Results come back in greedy selection order, highest-gain set first, so any
     prefix is itself a good partial cover: take the first k rows for the k sets
-    that cover the most. `n_new` is each pick's marginal gain and `n_cum` the
-    running total, which is where you look to decide where to truncate.
+    that cover the most.
 
-    - If `data` is a DataFrame-like (pandas/polars via Narwhals), provide
-      `set_col` and `el_col`; returns a native DataFrame with columns
-      `set`, `step`, `n_new`, `n_cum` in the same backend as the input.
-    - If `data` is a mapping from set labels to iterables of elements,
-      returns a list of `Step` named tuples (no DataFrame backend assumed).
+    `output` selects the return shape:
 
-    With `only_sets=True` you get just the chosen labels, still in selection
-    order: a native Series for the DataFrame path, a list for the mapping path.
-
-    With `pairs=True` you get the cover expanded to one row per element —
-    columns `set` and `element` — matching what `RcppGreedySetCover`'s
-    `greedySetCover()` returns. Each element appears exactly once, attributed
-    to whichever chosen set reached it first, so it is a partition of the
-    universe rather than a join.
+    - `"picks"` (default) — one row per chosen set, with `step`, `n_new` (that
+      pick's marginal gain) and `n_cum` (the running total, which is where you
+      look to decide where to truncate). A native DataFrame in the input's
+      backend, or a list of `Step` named tuples from a mapping.
+    - `"sets"` — just the chosen labels, still in selection order. A native
+      Series, or a list.
+    - `"pairs"` — the cover expanded to one row per element, columns `set` and
+      `element`, matching what `RcppGreedySetCover`'s `greedySetCover()`
+      returns. Each element appears exactly once, attributed to whichever
+      chosen set reached it first, so it is a partition of the universe rather
+      than a join. A native DataFrame, or a list of tuples.
     """
-    if only_sets and pairs:
-        raise ValueError("only_sets and pairs are mutually exclusive")
+    if output not in ("picks", "sets", "pairs"):
+        raise ValueError(f"output must be 'picks', 'sets' or 'pairs', got {output!r}")
 
     # DataFrame path
     if set_col is not None and el_col is not None:
@@ -112,7 +113,7 @@ def setcover(
             universe_size = int(df.get_column("element_int").max()) + 1
         else:
             universe_size = 0
-        if pairs:
+        if output == "pairs":
             picks, owner = greedy_set_cover_dense_with_owner_py(universe_size, sets)
         else:
             picks = greedy_set_cover_dense_py(universe_size, sets)
@@ -121,7 +122,7 @@ def setcover(
         # is the set the solver saw at index i.
         labels = dfl.get_column("set").to_list()
 
-        if pairs:
+        if output == "pairs":
             # element_int is a dense rank, so sorting by it lines the labels up
             # with owner, which the solver indexed by element.
             el_labels = (
@@ -152,7 +153,7 @@ def setcover(
             },
             backend=df.implementation,
         )
-        if only_sets:
+        if output == "sets":
             return solution.get_column("set").to_native()
         return solution.to_native()
 
@@ -180,7 +181,7 @@ def setcover(
 
     universe_size = len(elem_to_id)
 
-    if pairs:
+    if output == "pairs":
         picks, owner = greedy_set_cover_dense_with_owner_py(universe_size, sets_int)
         el_labels = list(elem_to_id)  # insertion order matches the assigned ids
         step_of_set = {set_idx: step for step, (set_idx, _) in enumerate(picks)}
@@ -188,7 +189,7 @@ def setcover(
         return [(labels[owner[e]], el_labels[e]) for e in order]
 
     picks = greedy_set_cover_dense_py(universe_size, sets_int)
-    if only_sets:
+    if output == "sets":
         return [labels[idx] for idx, _ in picks]
 
     cumulative = accumulate(gain for _, gain in picks)
