@@ -57,14 +57,27 @@ The return type mirrors the backend you passed in (pandas `DataFrame` above,
 Polars `DataFrame` if you provide a `pl.DataFrame`). Missing values and
 duplicate `(set, element)` pairs are dropped before solving.
 
-If you only want the labels, `only_sets=True` returns a native Series, still in
-selection order:
+If you only want the labels, take the `set` column.
+
+## Expanding the cover
+
+`output="pairs"` returns one row per element instead — the cover joined back to the
+elements it covers, matching what `RcppGreedySetCover`'s `greedySetCover()`
+returns:
 
 ```python
-setcover(df, "set", "element", only_sets=True)
-# 0    B
-# 1    C
+setcover(df, "set", "element", output="pairs")
+#   set  element
+# 0   B       10
+# 1   B       20
+# 2   B       30
+# 3   C       40
+# 4   C       50
 ```
+
+Each element appears exactly once, attributed to whichever chosen set reached
+it first — a partition of the universe, not a join. Rows stay in selection
+order, so the first set's elements come first.
 
 ## Mapping input (labels → elements)
 
@@ -81,7 +94,7 @@ setcover(sets)
 # [Step(set='A', step=0, n_new=2, n_cum=2),
 #  Step(set='C', step=1, n_new=1, n_cum=3)]
 
-setcover(sets, only_sets=True)
+[s.set for s in setcover(sets)]
 # ['A', 'C']
 ```
 
