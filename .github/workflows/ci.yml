@@ -37,9 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Upper bound is pyo3 0.21's max supported CPython, not a preference.
-        # Raise it together with the pyo3 dependency.
-        python-version: ["3.10", "3.12"]
+        python-version: ["3.10", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
